@@ -6,6 +6,7 @@ import Dropdown from "./DropDown";
 
 export default function NavLinks({ isSidebarOpen }) {
     const { emp_data } = usePage().props;
+    console.log(emp_data);
 
     return (
         <nav

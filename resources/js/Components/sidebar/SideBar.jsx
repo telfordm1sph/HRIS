@@ -16,6 +16,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     MonitorSmartphone,
+    UserRoundCog,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -110,7 +111,7 @@ export default function Sidebar() {
                             )}
                         >
                             <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-900/50">
-                                <MonitorSmartphone className="w-4 h-4 text-white" />
+                                <UserRoundCog className="w-4 h-4 text-white" />
                             </div>
 
                             {isSidebarOpen && (
