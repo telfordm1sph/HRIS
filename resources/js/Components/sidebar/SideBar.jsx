@@ -110,8 +110,8 @@ export default function Sidebar() {
                                 !isSidebarOpen && "justify-center",
                             )}
                         >
-                            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-900/50">
-                                <UserRoundCog className="w-4 h-4 text-white" />
+                            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/30">
+                                <UserRoundCog className="w-4 h-4 text-primary-foreground" />
                             </div>
 
                             {isSidebarOpen && (
