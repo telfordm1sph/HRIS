@@ -1,32 +1,24 @@
 import { useState, useMemo } from "react";
-import { Head, router, useForm } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
+import { Combobox } from "@/components/ui/combobox";
 import { memo } from "react";
-import axios from "axios";
+
+import EditSectionDropdown from "@/Components/ChangeRequest/EditSectionDropdown";
+import ChangeRequestModal from "@/Components/ChangeRequest/ChangeRequestModal";
+import {
+    NameForm,
+    CivilStatusForm,
+    AddressForm,
+    EducationForm,
+    ParentForm,
+    SpouseForm,
+    FamilyTableForm,
+    OthersForm,
+} from "@/Components/ChangeRequest/Forms/CategoryForms";
+
 import { initials, avatarPalette } from "@/Helpers/employee";
-import { toast } from "sonner";
 import {
     Field,
     SectionDivider,
@@ -35,544 +27,118 @@ import {
     TabBtn,
     ApproverCard,
 } from "@/Components/Employee/EmployeeComponents";
+
 const EmployeeCombobox = memo(Combobox);
-// ─── New Components for Modern Edit & Upload ──────────────────────────────────
 
-// Editable Field with inline edit capability
-const EditableField = ({
-    label,
-    value,
-    fieldKey,
-    onSave,
-    attachmentRequired = false,
-    category,
-}) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editValue, setEditValue] = useState(value || "");
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [isUploading, setIsUploading] = useState(false);
+// ─── Pending badge shown under a section title ────────────────────────────────
 
-    const handleSave = async () => {
-        if (attachmentRequired && !uploadedFile && editValue !== value) {
-            toast.error(`Please upload supporting document for ${label}`);
-            return;
+function PendingBadge({ request }) {
+    if (!request) return null;
+
+    if (request.status === "pending") {
+        return (
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                ⏳ pending approval
+            </span>
+        );
+    }
+    if (request.status === "rejected") {
+        return (
+            <span
+                className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                title={request.remarks ?? ""}
+            >
+                ❌ rejected {request.remarks ? `— ${request.remarks}` : ""}
+            </span>
+        );
+    }
+    return null;
+}
+
+// ─── Build old_value snapshot per category from employee prop ─────────────────
+
+function buildOldValue(category, employee) {
+    switch (category) {
+        case "name":
+            return {
+                firstname: employee.emp_firstname,
+                middlename: employee.emp_middlename,
+                lastname: employee.emp_lastname,
+            };
+        case "civil_status":
+            return { civil_status: employee.civil_status };
+        case "education":
+            return { educational_attainment: employee.educational_attainment };
+        case "address":
+            return {
+                house_no: employee.address?.house_no ?? "",
+                brgy: employee.address?.brgy ?? "",
+                city: employee.address?.city ?? "",
+                province: employee.address?.province ?? "",
+                perma_house_no: employee.address?.perma_house_no ?? "",
+                perma_brgy: employee.address?.perma_brgy ?? "",
+                perma_city: employee.address?.perma_city ?? "",
+                perma_province: employee.address?.perma_province ?? "",
+            };
+        case "father": {
+            const f =
+                employee.parent?.find((p) => p.parent_gender === "Male") ?? {};
+            return {
+                parent_name: f.parent_name ?? "",
+                parent_bday: f.parent_bday ?? "",
+                parent_age: f.parent_age ?? "",
+                parent_gender: "Male",
+            };
         }
-
-        const formData = new FormData();
-        formData.append("field", fieldKey);
-        formData.append("value", editValue);
-        if (uploadedFile) {
-            formData.append("attachment", uploadedFile);
-            formData.append("category", category);
+        case "mother": {
+            const m =
+                employee.parent?.find((p) => p.parent_gender === "Female") ??
+                {};
+            return {
+                parent_name: m.parent_name ?? "",
+                parent_bday: m.parent_bday ?? "",
+                parent_age: m.parent_age ?? "",
+                parent_gender: "Female",
+            };
         }
+        case "spouse":
+            return employee.spouse ?? [];
+        case "children":
+            return employee.children ?? [];
+        case "siblings":
+            return employee.siblings ?? [];
+        case "others":
+            return {
+                nickname: employee.nickname,
+                email: employee.email,
+                contact_no: employee.contact_no,
+                religion: employee.religion,
+                blood_type: employee.blood_type,
+                height: employee.height,
+                weight: employee.weight,
+            };
+        default:
+            return {};
+    }
+}
 
-        try {
-            if (uploadedFile) {
-                setIsUploading(true);
-                const response = await axios.post(
-                    route("employee.update-with-attachment"),
-                    formData,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                        onUploadProgress: (progressEvent) => {
-                            const percentCompleted = Math.round(
-                                (progressEvent.loaded * 100) /
-                                    progressEvent.total,
-                            );
-                            setUploadProgress(percentCompleted);
-                        },
-                    },
-                );
-                if (response.data.success) {
-                    toast.success(
-                        `${label} updated successfully with attachment`,
-                    );
-                    onSave?.(editValue, response.data.attachment_url);
-                }
-            } else {
-                await axios.patch(
-                    route("employee.update", { field: fieldKey }),
-                    { value: editValue },
-                );
-                toast.success(`${label} updated successfully`);
-                onSave?.(editValue);
-            }
-            setIsEditing(false);
-            setUploadedFile(null);
-            setUploadProgress(0);
-        } catch (error) {
-            toast.error(`Failed to update ${label}`);
-            console.error(error);
-        } finally {
-            setIsUploading(false);
-        }
-    };
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
-    const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const validTypes = [
-                "image/jpeg",
-                "image/png",
-                "application/pdf",
-                "image/jpg",
-            ];
-            if (!validTypes.includes(file.type)) {
-                toast.error("Please upload JPEG, PNG, or PDF files only");
-                return;
-            }
-            if (file.size > 5 * 1024 * 1024) {
-                toast.error("File size should be less than 5MB");
-                return;
-            }
-            setUploadedFile(file);
-        }
-    };
-
-    return (
-        <div className="group relative">
-            {!isEditing ? (
-                <div
-                    className="cursor-pointer hover:bg-muted/30 rounded-lg p-2 -m-2 transition-colors"
-                    onClick={() => setIsEditing(true)}
-                >
-                    <Label className="text-xs font-medium text-muted-foreground block mb-1">
-                        {label}
-                    </Label>
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-foreground">
-                            {value || "—"}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <path d="M17 3l4 4-7 7H10v-4l7-7z" />
-                                <path d="M4 20h16" />
-                            </svg>
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                        {label}
-                    </Label>
-                    <Input
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        placeholder={`Enter ${label.toLowerCase()}`}
-                        className="text-sm"
-                        autoFocus
-                    />
-                    {attachmentRequired && (
-                        <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">
-                                Supporting Document
-                            </Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    type="file"
-                                    onChange={handleFileSelect}
-                                    accept=".jpg,.jpeg,.png,.pdf"
-                                    className="text-xs file:mr-2 file:py-1 file:px-3 file:text-xs file:rounded-md"
-                                />
-                                {uploadedFile && (
-                                    <Badge
-                                        variant="secondary"
-                                        className="text-xs"
-                                    >
-                                        {uploadedFile.name}
-                                    </Badge>
-                                )}
-                            </div>
-                            {isUploading && (
-                                <div className="space-y-1">
-                                    <Progress
-                                        value={uploadProgress}
-                                        className="h-1"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        {uploadProgress}% uploaded
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <div className="flex gap-2 pt-1">
-                        <Button
-                            size="sm"
-                            onClick={handleSave}
-                            disabled={isUploading}
-                        >
-                            {isUploading ? "Uploading..." : "Save"}
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                                setIsEditing(false);
-                                setUploadedFile(null);
-                                setEditValue(value || "");
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// Category Card with upload zone for batch updates
-const CategoryUploadCard = ({
-    title,
-    description,
-    category,
-    onUploadComplete,
-    existingAttachments = [],
-}) => {
-    const [files, setFiles] = useState([]);
-    const [uploading, setUploading] = useState(false);
-    const [dragActive, setDragActive] = useState(false);
-
-    const handleFiles = async (fileList) => {
-        const selectedFiles = Array.from(fileList);
-        const validFiles = selectedFiles.filter((file) => {
-            const validTypes = ["image/jpeg", "image/png", "application/pdf"];
-            return (
-                validTypes.includes(file.type) && file.size <= 5 * 1024 * 1024
-            );
-        });
-
-        if (validFiles.length !== selectedFiles.length) {
-            toast.error("Some files were skipped (invalid type or >5MB)");
-        }
-
-        setFiles(validFiles);
-
-        if (validFiles.length > 0) {
-            setUploading(true);
-            const formData = new FormData();
-            validFiles.forEach((file) =>
-                formData.append("attachments[]", file),
-            );
-            formData.append("category", category);
-
-            try {
-                const response = await axios.post(
-                    route("employee.upload-category"),
-                    formData,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                    },
-                );
-                if (response.data.success) {
-                    toast.success(
-                        `${validFiles.length} file(s) uploaded for ${title}`,
-                    );
-                    onUploadComplete?.(response.data.attachments);
-                    setFiles([]);
-                }
-            } catch (error) {
-                toast.error(`Failed to upload ${title} documents`);
-            } finally {
-                setUploading(false);
-            }
-        }
-    };
-
-    return (
-        <Card className="border-border/50 hover:border-primary/20 transition-all">
-            <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                    <span>{title}</span>
-                    {existingAttachments.length > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                            {existingAttachments.length} file(s)
-                        </Badge>
-                    )}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                    {description}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div
-                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
-                        dragActive
-                            ? "border-primary bg-primary/5"
-                            : "border-border/50 hover:border-primary/30"
-                    }`}
-                    onDragOver={(e) => {
-                        e.preventDefault();
-                        setDragActive(true);
-                    }}
-                    onDragLeave={() => setDragActive(false)}
-                    onDrop={(e) => {
-                        e.preventDefault();
-                        setDragActive(false);
-                        handleFiles(e.dataTransfer.files);
-                    }}
-                    onClick={() =>
-                        document.getElementById(`upload-${category}`)?.click()
-                    }
-                >
-                    <input
-                        id={`upload-${category}`}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => handleFiles(e.target.files)}
-                        accept=".jpg,.jpeg,.png,.pdf"
-                    />
-                    <svg
-                        className="w-8 h-8 mx-auto text-muted-foreground mb-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                    </svg>
-                    <p className="text-xs text-muted-foreground">
-                        {uploading
-                            ? "Uploading..."
-                            : "Drag & drop or click to upload"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        PDF, JPEG, PNG up to 5MB each
-                    </p>
-                </div>
-                {files.length > 0 && !uploading && (
-                    <div className="mt-3 space-y-1">
-                        {files.map((file, idx) => (
-                            <div
-                                key={idx}
-                                className="text-xs text-muted-foreground flex items-center gap-2"
-                            >
-                                <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                    />
-                                </svg>
-                                {file.name}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-};
-
-// Modern Personal Info Editor Modal
-const PersonalInfoEditor = ({ employee, onUpdate }) => {
-    const [open, setOpen] = useState(false);
-    const { data, setData, post, processing } = useForm({
-        emp_firstname: employee.emp_firstname || "",
-        emp_middlename: employee.emp_middlename || "",
-        emp_lastname: employee.emp_lastname || "",
-        nickname: employee.nickname || "",
-        birthday: employee.birthday || "",
-        place_of_birth: employee.place_of_birth || "",
-        emp_sex: employee.emp_sex || "",
-        civil_status: employee.civil_status || "",
-        religion: employee.religion || "",
-        blood_type: employee.blood_type || "",
-        height: employee.height || "",
-        weight: employee.weight || "",
-        email: employee.email || "",
-        contact_no: employee.contact_no || "",
-        educational_attainment: employee.educational_attainment || "",
-    });
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        post(route("employee.update-personal"), {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success("Personal information updated");
-                setOpen(false);
-                onUpdate?.();
-            },
-        });
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                    <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                    </svg>
-                    Edit All
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Edit Personal Information</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>First Name</Label>
-                            <Input
-                                value={data.emp_firstname}
-                                onChange={(e) =>
-                                    setData("emp_firstname", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Middle Name</Label>
-                            <Input
-                                value={data.emp_middlename}
-                                onChange={(e) =>
-                                    setData("emp_middlename", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Last Name</Label>
-                            <Input
-                                value={data.emp_lastname}
-                                onChange={(e) =>
-                                    setData("emp_lastname", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Nickname</Label>
-                            <Input
-                                value={data.nickname}
-                                onChange={(e) =>
-                                    setData("nickname", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Birthday</Label>
-                            <Input
-                                type="date"
-                                value={data.birthday}
-                                onChange={(e) =>
-                                    setData("birthday", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Place of Birth</Label>
-                            <Input
-                                value={data.place_of_birth}
-                                onChange={(e) =>
-                                    setData("place_of_birth", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Sex</Label>
-                            <select
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                value={data.emp_sex}
-                                onChange={(e) =>
-                                    setData("emp_sex", e.target.value)
-                                }
-                            >
-                                <option value="">Select</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Civil Status</Label>
-                            <Input
-                                value={data.civil_status}
-                                onChange={(e) =>
-                                    setData("civil_status", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Contact No</Label>
-                            <Input
-                                value={data.contact_no}
-                                onChange={(e) =>
-                                    setData("contact_no", e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input
-                                type="email"
-                                value={data.email}
-                                onChange={(e) =>
-                                    setData("email", e.target.value)
-                                }
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={processing}>
-                            Save Changes
-                        </Button>
-                    </div>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-// ─── Main Component with Enhanced Personal Section ─────────────────────────────
-
-export default function EmployeeShow({ employee, activeEmployees = [] }) {
+export default function EmployeeShow({
+    employee,
+    activeEmployees = [],
+    changeRequests = {},
+}) {
     const [tab, setTab] = useState("personal");
-    const [personalData, setPersonalData] = useState(employee);
+    const [modalCategory, setModalCategory] = useState(null); // which modal is open
+    const [formValue, setFormValue] = useState(null); // controlled form state
+    console.log(employee);
 
+    // changeRequests is a map: { name: {...}, civil_status: null, ... }
+    // passed from controller via getPendingMapForEmployee()
+    const [pendingMap, setPendingMap] = useState(changeRequests);
+
+    const pal = avatarPalette(employee.emp_id);
     const loadOptions = async (search, page) => {
         const response = await axios.get(route("employees.options"), {
             params: { search, page, per_page: 50 },
@@ -602,42 +168,98 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
         });
     };
 
-    const handleFieldUpdate = (field, value, attachmentUrl) => {
-        setPersonalData((prev) => ({ ...prev, [field]: value }));
-        if (attachmentUrl) {
-            console.log(`Attachment saved for ${field}:`, attachmentUrl);
-        }
+    // Open modal — initialize form value from current employee data
+    const openModal = (category) => {
+        setFormValue(buildOldValue(category, employee));
+        setModalCategory(category);
     };
 
-    const pal = avatarPalette(employee.emp_id);
+    const closeModal = () => {
+        setModalCategory(null);
+        setFormValue(null);
+    };
 
-    // Define which categories require attachments
-    const categoriesWithAttachments = [
-        {
-            id: "civil_status",
-            label: "Civil Status",
-            requiresFile: true,
-            category: "civil_status_docs",
-        },
-        {
-            id: "educational_attainment",
-            label: "Education",
-            requiresFile: true,
-            category: "education_docs",
-        },
-        {
-            id: "birthday",
-            label: "Birthday",
-            requiresFile: true,
-            category: "birth_certificate",
-        },
-        {
-            id: "emp_firstname",
-            label: "Name Change",
-            requiresFile: true,
-            category: "name_change_docs",
-        },
-    ];
+    const handleSuccess = (newRequest) => {
+        setPendingMap((prev) => ({
+            ...prev,
+            [newRequest.category]: newRequest,
+        }));
+    };
+
+    // Render the correct form inside the modal
+    const renderForm = () => {
+        if (!modalCategory || formValue === null) return null;
+
+        switch (modalCategory) {
+            case "name":
+                return <NameForm value={formValue} onChange={setFormValue} />;
+            case "civil_status":
+                return (
+                    <CivilStatusForm
+                        value={formValue}
+                        onChange={setFormValue}
+                    />
+                );
+            case "address":
+                return (
+                    <AddressForm value={formValue} onChange={setFormValue} />
+                );
+            case "education":
+                return (
+                    <EducationForm value={formValue} onChange={setFormValue} />
+                );
+            case "father":
+                return (
+                    <ParentForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        gender="Male"
+                    />
+                );
+            case "mother":
+                return (
+                    <ParentForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        gender="Female"
+                    />
+                );
+            case "spouse":
+                return <SpouseForm value={formValue} onChange={setFormValue} />;
+            case "children":
+                return (
+                    <FamilyTableForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        config={{
+                            nameKey: "child_name",
+                            bdayKey: "child_bday",
+                            ageKey: "child_age",
+                            genderKey: "child_gender",
+                            rowLabel: "Child",
+                        }}
+                    />
+                );
+            case "siblings":
+                return (
+                    <FamilyTableForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        config={{
+                            nameKey: "sibling_name",
+                            bdayKey: "sibling_bday",
+                            ageKey: "sibling_age",
+                            genderKey: "sibling_gender",
+                            rowLabel: "Sibling",
+                        }}
+                    />
+                );
+            case "others":
+                return <OthersForm value={formValue} onChange={setFormValue} />;
+            default:
+                return null;
+        }
+    };
 
     return (
         <AuthenticatedLayout>
@@ -676,7 +298,7 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                 </div>
 
                 <div className="max-w-5xl mx-auto px-6 py-8">
-                    {/* ── Profile Header with Edit Button ───────────────── */}
+                    {/* ── Profile Header ── */}
                     <div className="flex items-start gap-5 mb-8">
                         <div
                             className={`w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-[20px] font-bold shrink-0 ${pal.bg} ${pal.text}`}
@@ -687,11 +309,12 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                         <div className="flex-1 min-w-0 pt-0.5">
                             <div className="flex items-center gap-3 mb-1.5">
                                 <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none">
-                                    {personalData.emp_name || employee.emp_name}
+                                    {employee.emp_name}
                                 </h1>
-                                <PersonalInfoEditor
-                                    employee={employee}
-                                    onUpdate={() => router.reload()}
+                                {/* ← Edit Section Dropdown */}
+                                <EditSectionDropdown
+                                    onSelect={openModal}
+                                    pendingMap={pendingMap}
                                 />
                             </div>
                             <p className="text-[13px] text-muted-foreground mb-3 leading-relaxed">
@@ -725,8 +348,8 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                         </div>
                     </div>
 
-                    {/* ── Tabs ────────────────────────────────────────── */}
-                    <div className="border-b border-border/50 flex gap-5 mb-6">
+                    {/* ── Tabs ── */}
+                    <div className="border-b border-border/50 flex gap-5 mb-2">
                         <TabBtn
                             active={tab === "personal"}
                             onClick={() => setTab("personal")}
@@ -739,165 +362,118 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                         >
                             Work
                         </TabBtn>
-                        <TabBtn
-                            active={tab === "documents"}
-                            onClick={() => setTab("documents")}
-                        >
-                            Documents
-                        </TabBtn>
                     </div>
 
-                    {/* ══════════════════════════════════════════════════
-                        MODERN PERSONAL TAB WITH EDITABLE FIELDS & UPLOADS
-                    ══════════════════════════════════════════════════ */}
+                    {/* ══ PERSONAL TAB ══ */}
                     {tab === "personal" && (
                         <>
-                            <div className="flex items-center justify-between mb-4">
-                                <SectionDivider title="Basic Information" />
-                                <span className="text-[10px] text-muted-foreground/60">
-                                    Click any field to edit
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
-                                <EditableField
+                            <SectionDivider title="Basic Information" />
+                            <PendingBadge request={pendingMap["name"]} />
+                            <PendingBadge
+                                request={pendingMap["civil_status"]}
+                            />
+                            <PendingBadge request={pendingMap["education"]} />
+                            <PendingBadge request={pendingMap["others"]} />
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5 mt-3">
+                                <Field
                                     label="First Name"
-                                    value={personalData.emp_firstname}
-                                    fieldKey="emp_firstname"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("emp_firstname", val)
-                                    }
-                                    category="name_change"
-                                    attachmentRequired={false}
+                                    value={employee.emp_firstname}
                                 />
-                                <EditableField
+                                <Field
                                     label="Middle Name"
-                                    value={personalData.emp_middlename}
-                                    fieldKey="emp_middlename"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("emp_middlename", val)
-                                    }
+                                    value={employee.emp_middlename}
                                 />
-                                <EditableField
+                                <Field
                                     label="Last Name"
-                                    value={personalData.emp_lastname}
-                                    fieldKey="emp_lastname"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("emp_lastname", val)
-                                    }
+                                    value={employee.emp_lastname}
                                 />
-                                <EditableField
+                                <Field
                                     label="Nickname"
-                                    value={personalData.nickname}
-                                    fieldKey="nickname"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("nickname", val)
-                                    }
+                                    value={employee.nickname}
                                 />
-                                <EditableField
+                                <Field
                                     label="Birthday"
-                                    value={personalData.birthday}
-                                    fieldKey="birthday"
-                                    attachmentRequired={true}
-                                    category="birth_certificate"
-                                    onSave={(val, url) =>
-                                        handleFieldUpdate("birthday", val, url)
-                                    }
+                                    value={employee.birthday}
                                 />
-                                <EditableField
+                                <Field
                                     label="Place of Birth"
-                                    value={personalData.place_of_birth}
-                                    fieldKey="place_of_birth"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("place_of_birth", val)
-                                    }
+                                    value={employee.place_of_birth}
                                 />
-                                <EditableField
-                                    label="Sex"
-                                    value={personalData.emp_sex}
-                                    fieldKey="emp_sex"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("emp_sex", val)
-                                    }
-                                />
-                                <EditableField
+                                <Field label="Sex" value={employee.emp_sex} />
+                                <Field
                                     label="Civil Status"
-                                    value={personalData.civil_status}
-                                    fieldKey="civil_status"
-                                    attachmentRequired={true}
-                                    category="civil_status_docs"
-                                    onSave={(val, url) =>
-                                        handleFieldUpdate(
-                                            "civil_status",
-                                            val,
-                                            url,
-                                        )
-                                    }
+                                    value={employee.civil_status}
                                 />
-                                <EditableField
+                                <Field
                                     label="Religion"
-                                    value={personalData.religion}
-                                    fieldKey="religion"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("religion", val)
-                                    }
+                                    value={employee.religion}
                                 />
-                                <EditableField
+                                <Field
                                     label="Blood Type"
-                                    value={personalData.blood_type}
-                                    fieldKey="blood_type"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("blood_type", val)
-                                    }
+                                    value={employee.blood_type}
                                 />
-                                <EditableField
-                                    label="Height"
-                                    value={personalData.height}
-                                    fieldKey="height"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("height", val)
-                                    }
-                                />
-                                <EditableField
-                                    label="Weight"
-                                    value={personalData.weight}
-                                    fieldKey="weight"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("weight", val)
-                                    }
-                                />
-                                <EditableField
-                                    label="Email"
-                                    value={personalData.email}
-                                    fieldKey="email"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("email", val)
-                                    }
-                                />
-                                <EditableField
+                                <Field label="Height" value={employee.height} />
+                                <Field label="Weight" value={employee.weight} />
+                                <Field label="Email" value={employee.email} />
+                                <Field
                                     label="Contact No"
-                                    value={personalData.contact_no}
-                                    fieldKey="contact_no"
-                                    onSave={(val) =>
-                                        handleFieldUpdate("contact_no", val)
-                                    }
+                                    value={employee.contact_no}
                                 />
-                                <EditableField
+                                <Field
                                     label="Education"
-                                    value={personalData.educational_attainment}
-                                    fieldKey="educational_attainment"
-                                    attachmentRequired={true}
-                                    category="education_docs"
-                                    onSave={(val, url) =>
-                                        handleFieldUpdate(
-                                            "educational_attainment",
-                                            val,
-                                            url,
-                                        )
-                                    }
+                                    value={employee.educational_attainment}
+                                />
+                            </div>
+
+                            <SectionDivider title="Address" />
+                            <PendingBadge request={pendingMap["address"]} />
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5 mt-3">
+                                <Field
+                                    label="House No."
+                                    value={employee.address?.house_no}
+                                />
+                                <Field
+                                    label="Barangay"
+                                    value={employee.address?.brgy}
+                                />
+                                <Field
+                                    label="City"
+                                    value={employee.address?.city}
+                                />
+                                <Field
+                                    label="Province"
+                                    value={employee.address?.province}
+                                />
+                                <Field
+                                    label="Perma House."
+                                    value={employee.address?.perma_house_no}
+                                />
+                                <Field
+                                    label="Perma Brgy."
+                                    value={employee.address?.perma_brgy}
+                                />
+                                <Field
+                                    label="Perma City"
+                                    value={employee.address?.perma_city}
+                                />
+                                <Field
+                                    label="Perma Prov."
+                                    value={employee.address?.perma_province}
                                 />
                             </div>
 
                             <SectionDivider title="Family" />
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                <PendingBadge request={pendingMap["father"]} />
+                                <PendingBadge request={pendingMap["mother"]} />
+                                <PendingBadge request={pendingMap["spouse"]} />
+                                <PendingBadge
+                                    request={pendingMap["children"]}
+                                />
+                                <PendingBadge
+                                    request={pendingMap["siblings"]}
+                                />
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FamilyTable
                                     title="Parents"
@@ -971,9 +547,7 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                         </>
                     )}
 
-                    {/* ══════════════════════════════════════════════════
-                        WORK TAB (unchanged but can be modernized similarly)
-                    ══════════════════════════════════════════════════ */}
+                    {/* ══ WORK TAB ══ */}
                     {tab === "work" && (
                         <>
                             <SectionDivider title="Work Information" />
@@ -1080,72 +654,24 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                             )}
                         </>
                     )}
-
-                    {/* ══════════════════════════════════════════════════
-                        DOCUMENTS TAB - Category-Based Upload Zone
-                    ══════════════════════════════════════════════════ */}
-                    {tab === "documents" && (
-                        <>
-                            <SectionDivider title="Document Management" />
-                            <p className="text-sm text-muted-foreground mb-6">
-                                Upload supporting documents for personal
-                                information updates. Each category can have
-                                multiple attachments.
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <CategoryUploadCard
-                                    title="Civil Status Documents"
-                                    description="Marriage certificate, annulment papers, etc."
-                                    category="civil_status"
-                                    existingAttachments={
-                                        employee.civil_status_attachments || []
-                                    }
-                                />
-                                <CategoryUploadCard
-                                    title="Education Credentials"
-                                    description="Diploma, transcript, certificates"
-                                    category="education"
-                                    existingAttachments={
-                                        employee.education_attachments || []
-                                    }
-                                />
-                                <CategoryUploadCard
-                                    title="Birth Certificate"
-                                    description="PSA birth certificate or equivalent"
-                                    category="birth_certificate"
-                                    existingAttachments={
-                                        employee.birth_attachments || []
-                                    }
-                                />
-                                <CategoryUploadCard
-                                    title="Government IDs"
-                                    description="SSS, PhilHealth, Pag-IBIG, TIN"
-                                    category="government_ids"
-                                    existingAttachments={
-                                        employee.gov_id_attachments || []
-                                    }
-                                />
-                                <CategoryUploadCard
-                                    title="Name Change Documents"
-                                    description="Court order, affidavit, marriage cert"
-                                    category="name_change"
-                                    existingAttachments={
-                                        employee.name_change_attachments || []
-                                    }
-                                />
-                                <CategoryUploadCard
-                                    title="Other Supporting Docs"
-                                    description="Any additional verification"
-                                    category="other"
-                                    existingAttachments={
-                                        employee.other_attachments || []
-                                    }
-                                />
-                            </div>
-                        </>
-                    )}
                 </div>
             </div>
+
+            {/* ── Change Request Modal ── */}
+            {modalCategory && (
+                <ChangeRequestModal
+                    open={!!modalCategory}
+                    onClose={closeModal}
+                    employid={employee.emp_id}
+                    category={modalCategory}
+                    oldValue={buildOldValue(modalCategory, employee)}
+                    newValue={formValue}
+                    existingRequest={pendingMap[modalCategory]}
+                    onSuccess={handleSuccess}
+                >
+                    {renderForm()}
+                </ChangeRequestModal>
+            )}
         </AuthenticatedLayout>
     );
 }

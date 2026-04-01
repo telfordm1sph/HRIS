@@ -44,6 +44,18 @@ class EmployeeService
                 'educational_attainment'  => $employee->educational_attainment,
                 'accstatus'               => $employee->accstatus,
 
+                // 🏠 Address
+                'address' => $employee->address?->first() ? [
+                    'house_no'       => $employee->address->first()->house_no,
+                    'brgy'           => $employee->address->first()->brgy,
+                    'city'           => $employee->address->first()->city,
+                    'province'       => $employee->address->first()->province,
+
+                    'perma_house_no' => $employee->address->first()->perma_house_no,
+                    'perma_brgy'     => $employee->address->first()->perma_brgy,
+                    'perma_city'     => $employee->address->first()->perma_city,
+                    'perma_province' => $employee->address->first()->perma_province,
+                ] : null,
                 // 👨‍👩‍👧‍👦 Parents
                 'parent' =>  $employee->parents->map(fn($p) => [
                     'id'             => $p->id,

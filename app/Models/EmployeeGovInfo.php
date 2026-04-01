@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\Loggable;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeGovInfo extends Model
 {
+    use Loggable;
     protected $table = 'employee_gov_info';
 
     public $timestamps = false;

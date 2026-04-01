@@ -22,6 +22,7 @@ class EmployeeRepository
             'workDetail.approver.approver1Detail',
             'workDetail.approver.approver2Detail',
             'workDetail.approver.approver3Detail',
+            'address',
             'parents',
             'spouse',
             'siblings',

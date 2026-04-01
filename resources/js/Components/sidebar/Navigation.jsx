@@ -8,6 +8,7 @@ import {
     Box,
     Layers,
     User,
+    UserRoundPenIcon,
 } from "lucide-react";
 import Dropdown from "./DropDown";
 
@@ -24,6 +25,12 @@ export default function NavLinks({ isSidebarOpen }) {
                 href={route("employees.show", emp_data.emp_id)}
                 label="Details"
                 icon={<User className="w-5 h-5" />}
+                isSidebarOpen={isSidebarOpen}
+            />
+            <SidebarLink
+                href={route("change-requests.index")}
+                label="Change Requests"
+                icon={<UserRoundPenIcon className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
         </nav>

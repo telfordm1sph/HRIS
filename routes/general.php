@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\General\AdminController;
 use App\Http\Controllers\General\ProfileController;
 use App\Http\Middleware\AdminMiddleware;

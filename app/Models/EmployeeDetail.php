@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\Loggable;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeDetail extends Model
 {
+    use Loggable;
     protected $table      = 'employee_details';
     protected $connection = 'masterlist';
     protected $primaryKey = 'employid';
@@ -33,22 +35,52 @@ class EmployeeDetail extends Model
         'created_at',
     ];
 
+    // Add this accessor to get the full name
+    public function getNameAttribute(): string
+    {
+        $fullName = $this->firstname;
+
+        if (!empty($this->middlename)) {
+            $fullName .= ' ' . $this->middlename;
+        }
+
+        $fullName .= ' ' . $this->lastname;
+
+        return trim($fullName);
+    }
+
+    // Optional: Add an accessor for formatted name with nickname
+    public function getFullNameAttribute(): string
+    {
+        $name = $this->firstname . ' ' . $this->lastname;
+
+        if (!empty($this->nickname)) {
+            $name .= ' (' . $this->nickname . ')';
+        }
+
+        return $name;
+    }
+
     public function workDetail()
     {
         return $this->hasOne(EmployeeWorkDetail::class, 'employid', 'employid');
     }
+
     public function address()
     {
         return $this->hasMany(EmployeeAddress::class, 'employid', 'employid');
     }
+
     public function parents()
     {
         return $this->hasMany(EmployeeParent::class, 'employid', 'employid');
     }
+
     public function spouse()
     {
         return $this->hasMany(EmployeeSpouse::class, 'employid', 'employid');
     }
+
     public function siblings()
     {
         return $this->hasMany(EmployeeSibling::class, 'employid', 'employid');

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\Loggable;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeAddress extends Model
 {
+    use Loggable;
     protected $table = 'employee_address';
     protected $connection = 'masterlist';
     protected $primaryKey = 'id';

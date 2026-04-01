@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\Loggable;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeWorkDetail extends Model
 {
+    use Loggable;
     protected $table = 'employee_work_details';
     protected $connection = 'masterlist';
     public $timestamps = false;
