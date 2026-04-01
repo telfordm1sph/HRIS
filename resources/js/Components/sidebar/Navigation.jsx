@@ -1,7 +1,14 @@
 import { usePage } from "@inertiajs/react";
 import SidebarLink from "@/Components/sidebar/SidebarLink";
 
-import { ClipboardList, FileText, Table2, Box, Layers } from "lucide-react";
+import {
+    ClipboardList,
+    FileText,
+    Table2,
+    Box,
+    Layers,
+    User,
+} from "lucide-react";
 import Dropdown from "./DropDown";
 
 export default function NavLinks({ isSidebarOpen }) {
@@ -12,6 +19,13 @@ export default function NavLinks({ isSidebarOpen }) {
         <nav
             className="flex flex-col flex-grow space-y-1 overflow-y-auto"
             style={{ scrollbarWidth: "none" }}
-        ></nav>
+        >
+            <SidebarLink
+                href={route("employees.show", emp_data.emp_id)}
+                label="Details"
+                icon={<User className="w-5 h-5" />}
+                isSidebarOpen={isSidebarOpen}
+            />
+        </nav>
     );
 }

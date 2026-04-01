@@ -27,7 +27,6 @@ class EmployeeWorkDetail extends Model
         'service_length',
     ];
 
-    // 👇 Employee basic info (if you need it)
     public function employee()
     {
         return $this->belongsTo(EmployeeDetail::class, 'employid', 'employid');
@@ -37,15 +36,16 @@ class EmployeeWorkDetail extends Model
     // LOOKUP RELATIONSHIPS
     // =========================
 
-
     public function departmentRel()
     {
-        return $this->belongsTo(EmpDepartment::class, 'department');
+        return $this->belongsTo(EmployeeDepartment::class, 'department');
     }
+
     public function empPositionRel()
     {
-        return $this->belongsTo(EmpPosition::class, 'empposition');
+        return $this->belongsTo(EmployeePosition::class, 'empposition');
     }
+
     public function jobTitleRel()
     {
         return $this->belongsTo(JobTitle::class, 'job_title');
@@ -59,5 +59,31 @@ class EmployeeWorkDetail extends Model
     public function stationRel()
     {
         return $this->belongsTo(Station::class, 'station');
+    }
+
+    public function statusRel()
+    {
+        return $this->belongsTo(EmployeeStatus::class, 'empstatus');
+    }
+
+    public function classRel()
+    {
+        return $this->belongsTo(EmployeeClass::class, 'empclass');
+    }
+
+    public function shiftRel()
+    {
+        return $this->belongsTo(EmployeeShift::class, 'shift_type');
+    }
+
+    // Update this relationship to include the detail relationships
+    public function approver()
+    {
+        return $this->hasOne(EmployeeApprover::class, 'employid', 'employid');
+    }
+
+    public function govInfo()
+    {
+        return $this->hasOne(EmployeeGovInfo::class, 'employid', 'employid');
     }
 }

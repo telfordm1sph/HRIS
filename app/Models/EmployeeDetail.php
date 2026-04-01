@@ -37,14 +37,21 @@ class EmployeeDetail extends Model
     {
         return $this->hasOne(EmployeeWorkDetail::class, 'employid', 'employid');
     }
-
+    public function parents()
+    {
+        return $this->hasMany(EmployeeParent::class, 'employid', 'employid');
+    }
+    public function spouse()
+    {
+        return $this->hasMany(EmployeeSpouse::class, 'employid', 'employid');
+    }
     public function siblings()
     {
-        return $this->hasMany(Sibling::class, 'employid', 'employid');
+        return $this->hasMany(EmployeeSibling::class, 'employid', 'employid');
     }
 
     public function children()
     {
-        return $this->hasMany(Child::class, 'employid', 'employid');
+        return $this->hasMany(EmployeeChild::class, 'employid', 'employid');
     }
 }

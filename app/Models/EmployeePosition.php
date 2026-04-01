@@ -4,16 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class EmpDepartment extends Model
+class EmployeePosition extends Model
 {
-    protected $table = 'departments';
+    protected $table = 'emp_position';
     protected $connection = 'masterlist';
     public $timestamps = false;
 
     protected $fillable = [
-        'dept_name',
-        'pl_name',
-        'dept_head_id',
-        'dept_head_name',
+        'emp_position_name',
+
     ];
 }

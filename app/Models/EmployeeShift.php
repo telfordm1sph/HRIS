@@ -4,14 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class EmpPosition extends Model
+class EmployeeShift extends Model
 {
-    protected $table = 'emp_position';
+    protected $table = 'shift_types';
     protected $connection = 'masterlist';
     public $timestamps = false;
 
     protected $fillable = [
-        'emp_position_name',
-
+        'shift_name',
     ];
 }

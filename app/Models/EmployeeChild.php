@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Child extends Model
+class EmployeeChild extends Model
 {
-    protected $table      = 'children';
+    protected $table      = 'employee_children';
     protected $connection = 'masterlist';
     public    $timestamps = false;
 

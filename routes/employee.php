@@ -8,4 +8,6 @@ $app_name = env('APP_NAME', '');
 Route::prefix($app_name)->group(function () {
     Route::get('/employees/{employid}', [EmployeeController::class, 'show'])
         ->name('employees.show');
+    Route::get('/api/employees/options', [EmployeeController::class, 'getEmployeeOptions'])
+        ->name('employees.options');
 });
