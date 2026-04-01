@@ -1,186 +1,577 @@
 import { useState, useMemo } from "react";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, useForm } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { memo } from "react";
 import axios from "axios";
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { initials, avatarPalette } from "@/Helpers/employee";
+import { toast } from "sonner";
+import {
+    Field,
+    SectionDivider,
+    MetaChip,
+    FamilyTable,
+    TabBtn,
+    ApproverCard,
+} from "@/Components/Employee/EmployeeComponents";
 const EmployeeCombobox = memo(Combobox);
-const initials = (name = "") =>
-    name
-        .split(" ")
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || "?";
+// ─── New Components for Modern Edit & Upload ──────────────────────────────────
 
-const AVATAR_PALETTES = [
-    {
-        bg: "bg-violet-100 dark:bg-violet-900/60",
-        text: "text-violet-700 dark:text-violet-300",
-    },
-    {
-        bg: "bg-sky-100 dark:bg-sky-900/60",
-        text: "text-sky-700 dark:text-sky-300",
-    },
-    {
-        bg: "bg-emerald-100 dark:bg-emerald-900/60",
-        text: "text-emerald-700 dark:text-emerald-300",
-    },
-    {
-        bg: "bg-rose-100 dark:bg-rose-900/60",
-        text: "text-rose-700 dark:text-rose-300",
-    },
-    {
-        bg: "bg-amber-100 dark:bg-amber-900/60",
-        text: "text-amber-700 dark:text-amber-300",
-    },
-    {
-        bg: "bg-cyan-100 dark:bg-cyan-900/60",
-        text: "text-cyan-700 dark:text-cyan-300",
-    },
-];
+// Editable Field with inline edit capability
+const EditableField = ({
+    label,
+    value,
+    fieldKey,
+    onSave,
+    attachmentRequired = false,
+    category,
+}) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState(value || "");
+    const [uploadedFile, setUploadedFile] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
 
-const avatarPalette = (id) =>
-    AVATAR_PALETTES[Number(id) % AVATAR_PALETTES.length];
+    const handleSave = async () => {
+        if (attachmentRequired && !uploadedFile && editValue !== value) {
+            toast.error(`Please upload supporting document for ${label}`);
+            return;
+        }
 
-// ─── Micro UI ─────────────────────────────────────────────────────────────────
+        const formData = new FormData();
+        formData.append("field", fieldKey);
+        formData.append("value", editValue);
+        if (uploadedFile) {
+            formData.append("attachment", uploadedFile);
+            formData.append("category", category);
+        }
 
-const Field = ({ label, value }) => (
-    <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 font-mono">
-            {label}
-        </span>
-        <span
-            className={`text-[13.5px] leading-snug ${value ? "text-foreground" : "text-muted-foreground/30"}`}
-        >
-            {value ?? "—"}
-        </span>
-    </div>
-);
+        try {
+            if (uploadedFile) {
+                setIsUploading(true);
+                const response = await axios.post(
+                    route("employee.update-with-attachment"),
+                    formData,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                        onUploadProgress: (progressEvent) => {
+                            const percentCompleted = Math.round(
+                                (progressEvent.loaded * 100) /
+                                    progressEvent.total,
+                            );
+                            setUploadProgress(percentCompleted);
+                        },
+                    },
+                );
+                if (response.data.success) {
+                    toast.success(
+                        `${label} updated successfully with attachment`,
+                    );
+                    onSave?.(editValue, response.data.attachment_url);
+                }
+            } else {
+                await axios.patch(
+                    route("employee.update", { field: fieldKey }),
+                    { value: editValue },
+                );
+                toast.success(`${label} updated successfully`);
+                onSave?.(editValue);
+            }
+            setIsEditing(false);
+            setUploadedFile(null);
+            setUploadProgress(0);
+        } catch (error) {
+            toast.error(`Failed to update ${label}`);
+            console.error(error);
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
-const SectionDivider = ({ title }) => (
-    <div className="flex items-center gap-3 mt-8 mb-5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/50 font-mono whitespace-nowrap">
-            {title}
-        </span>
-        <div className="flex-1 h-px bg-border/50" />
-    </div>
-);
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const validTypes = [
+                "image/jpeg",
+                "image/png",
+                "application/pdf",
+                "image/jpg",
+            ];
+            if (!validTypes.includes(file.type)) {
+                toast.error("Please upload JPEG, PNG, or PDF files only");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error("File size should be less than 5MB");
+                return;
+            }
+            setUploadedFile(file);
+        }
+    };
 
-const MetaChip = ({ children }) =>
-    children ? (
-        <span className="text-[11px] font-mono bg-muted/50 border border-border/50 rounded-md px-2 py-0.5 text-muted-foreground">
-            {children}
-        </span>
-    ) : null;
-
-const FamilyTable = ({ title, rows, columns, emptyMsg }) => (
-    <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-2.5 font-mono">
-            {title}{" "}
-            <span className="font-normal opacity-50">({rows.length})</span>
-        </p>
-        {rows.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground/40 italic py-2">
-                {emptyMsg}
-            </p>
-        ) : (
-            <div className="rounded-lg border border-border/50 overflow-hidden">
-                <table className="w-full border-collapse text-sm">
-                    <thead>
-                        <tr className="bg-muted/30">
-                            {columns.map((col) => (
-                                <th
-                                    key={col}
-                                    className="text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 px-3 py-2 font-mono"
-                                >
-                                    {col}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row, i) => (
-                            <tr
-                                key={i}
-                                className="border-t border-border/30 hover:bg-muted/20 transition-colors"
-                            >
-                                {Object.values(row).map((val, j) => (
-                                    <td
-                                        key={j}
-                                        className="px-3 py-2.5 text-[13px] text-foreground/80"
-                                    >
-                                        {val ?? (
-                                            <span className="text-muted-foreground/30">
-                                                —
-                                            </span>
-                                        )}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        )}
-    </div>
-);
-
-const TabBtn = ({ active, onClick, children }) => (
-    <button
-        onClick={onClick}
-        className={`relative pb-2.5 px-1 text-[11px] font-bold uppercase tracking-widest font-mono transition-colors
-            ${
-                active
-                    ? "text-foreground"
-                    : "text-muted-foreground/50 hover:text-muted-foreground"
-            }`}
-    >
-        {children}
-        {active && (
-            <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground rounded-full" />
-        )}
-    </button>
-);
-
-const ApproverCard = ({ label, value, colorId }) => {
-    if (!value) return null;
-    const namePart = value.includes(" - ")
-        ? value.split(" - ").slice(1).join(" - ")
-        : value;
-    const idPart = value.includes(" - ") ? value.split(" - ")[0] : null;
-    const pal = avatarPalette(colorId);
     return (
-        <div className="flex items-center gap-3 rounded-xl border border-border/50 px-4 py-3 bg-muted/10">
-            <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0 ${pal.bg} ${pal.text}`}
-            >
-                {initials(namePart)}
-            </div>
-            <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/50 mb-0.5">
-                    {label}
-                </p>
-                <p className="text-[13px] font-medium text-foreground truncate leading-snug">
-                    {namePart}
-                </p>
-                {idPart && (
-                    <p className="text-[11px] font-mono text-muted-foreground/50">
-                        ID {idPart}
-                    </p>
-                )}
-            </div>
+        <div className="group relative">
+            {!isEditing ? (
+                <div
+                    className="cursor-pointer hover:bg-muted/30 rounded-lg p-2 -m-2 transition-colors"
+                    onClick={() => setIsEditing(true)}
+                >
+                    <Label className="text-xs font-medium text-muted-foreground block mb-1">
+                        {label}
+                    </Label>
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-foreground">
+                            {value || "—"}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M17 3l4 4-7 7H10v-4l7-7z" />
+                                <path d="M4 20h16" />
+                            </svg>
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    <Label className="text-xs font-medium text-muted-foreground">
+                        {label}
+                    </Label>
+                    <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder={`Enter ${label.toLowerCase()}`}
+                        className="text-sm"
+                        autoFocus
+                    />
+                    {attachmentRequired && (
+                        <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                                Supporting Document
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="file"
+                                    onChange={handleFileSelect}
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    className="text-xs file:mr-2 file:py-1 file:px-3 file:text-xs file:rounded-md"
+                                />
+                                {uploadedFile && (
+                                    <Badge
+                                        variant="secondary"
+                                        className="text-xs"
+                                    >
+                                        {uploadedFile.name}
+                                    </Badge>
+                                )}
+                            </div>
+                            {isUploading && (
+                                <div className="space-y-1">
+                                    <Progress
+                                        value={uploadProgress}
+                                        className="h-1"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        {uploadProgress}% uploaded
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                        <Button
+                            size="sm"
+                            onClick={handleSave}
+                            disabled={isUploading}
+                        >
+                            {isUploading ? "Uploading..." : "Save"}
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                                setIsEditing(false);
+                                setUploadedFile(null);
+                                setEditValue(value || "");
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// Category Card with upload zone for batch updates
+const CategoryUploadCard = ({
+    title,
+    description,
+    category,
+    onUploadComplete,
+    existingAttachments = [],
+}) => {
+    const [files, setFiles] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+
+    const handleFiles = async (fileList) => {
+        const selectedFiles = Array.from(fileList);
+        const validFiles = selectedFiles.filter((file) => {
+            const validTypes = ["image/jpeg", "image/png", "application/pdf"];
+            return (
+                validTypes.includes(file.type) && file.size <= 5 * 1024 * 1024
+            );
+        });
+
+        if (validFiles.length !== selectedFiles.length) {
+            toast.error("Some files were skipped (invalid type or >5MB)");
+        }
+
+        setFiles(validFiles);
+
+        if (validFiles.length > 0) {
+            setUploading(true);
+            const formData = new FormData();
+            validFiles.forEach((file) =>
+                formData.append("attachments[]", file),
+            );
+            formData.append("category", category);
+
+            try {
+                const response = await axios.post(
+                    route("employee.upload-category"),
+                    formData,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    },
+                );
+                if (response.data.success) {
+                    toast.success(
+                        `${validFiles.length} file(s) uploaded for ${title}`,
+                    );
+                    onUploadComplete?.(response.data.attachments);
+                    setFiles([]);
+                }
+            } catch (error) {
+                toast.error(`Failed to upload ${title} documents`);
+            } finally {
+                setUploading(false);
+            }
+        }
+    };
+
+    return (
+        <Card className="border-border/50 hover:border-primary/20 transition-all">
+            <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center justify-between">
+                    <span>{title}</span>
+                    {existingAttachments.length > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                            {existingAttachments.length} file(s)
+                        </Badge>
+                    )}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                    {description}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div
+                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                        dragActive
+                            ? "border-primary bg-primary/5"
+                            : "border-border/50 hover:border-primary/30"
+                    }`}
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragActive(true);
+                    }}
+                    onDragLeave={() => setDragActive(false)}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        setDragActive(false);
+                        handleFiles(e.dataTransfer.files);
+                    }}
+                    onClick={() =>
+                        document.getElementById(`upload-${category}`)?.click()
+                    }
+                >
+                    <input
+                        id={`upload-${category}`}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleFiles(e.target.files)}
+                        accept=".jpg,.jpeg,.png,.pdf"
+                    />
+                    <svg
+                        className="w-8 h-8 mx-auto text-muted-foreground mb-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                    </svg>
+                    <p className="text-xs text-muted-foreground">
+                        {uploading
+                            ? "Uploading..."
+                            : "Drag & drop or click to upload"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        PDF, JPEG, PNG up to 5MB each
+                    </p>
+                </div>
+                {files.length > 0 && !uploading && (
+                    <div className="mt-3 space-y-1">
+                        {files.map((file, idx) => (
+                            <div
+                                key={idx}
+                                className="text-xs text-muted-foreground flex items-center gap-2"
+                            >
+                                <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                {file.name}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+// Modern Personal Info Editor Modal
+const PersonalInfoEditor = ({ employee, onUpdate }) => {
+    const [open, setOpen] = useState(false);
+    const { data, setData, post, processing } = useForm({
+        emp_firstname: employee.emp_firstname || "",
+        emp_middlename: employee.emp_middlename || "",
+        emp_lastname: employee.emp_lastname || "",
+        nickname: employee.nickname || "",
+        birthday: employee.birthday || "",
+        place_of_birth: employee.place_of_birth || "",
+        emp_sex: employee.emp_sex || "",
+        civil_status: employee.civil_status || "",
+        religion: employee.religion || "",
+        blood_type: employee.blood_type || "",
+        height: employee.height || "",
+        weight: employee.weight || "",
+        email: employee.email || "",
+        contact_no: employee.contact_no || "",
+        educational_attainment: employee.educational_attainment || "",
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        post(route("employee.update-personal"), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success("Personal information updated");
+                setOpen(false);
+                onUpdate?.();
+            },
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                    <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                    </svg>
+                    Edit All
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Edit Personal Information</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>First Name</Label>
+                            <Input
+                                value={data.emp_firstname}
+                                onChange={(e) =>
+                                    setData("emp_firstname", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Middle Name</Label>
+                            <Input
+                                value={data.emp_middlename}
+                                onChange={(e) =>
+                                    setData("emp_middlename", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Last Name</Label>
+                            <Input
+                                value={data.emp_lastname}
+                                onChange={(e) =>
+                                    setData("emp_lastname", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Nickname</Label>
+                            <Input
+                                value={data.nickname}
+                                onChange={(e) =>
+                                    setData("nickname", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Birthday</Label>
+                            <Input
+                                type="date"
+                                value={data.birthday}
+                                onChange={(e) =>
+                                    setData("birthday", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Place of Birth</Label>
+                            <Input
+                                value={data.place_of_birth}
+                                onChange={(e) =>
+                                    setData("place_of_birth", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Sex</Label>
+                            <select
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={data.emp_sex}
+                                onChange={(e) =>
+                                    setData("emp_sex", e.target.value)
+                                }
+                            >
+                                <option value="">Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Civil Status</Label>
+                            <Input
+                                value={data.civil_status}
+                                onChange={(e) =>
+                                    setData("civil_status", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Contact No</Label>
+                            <Input
+                                value={data.contact_no}
+                                onChange={(e) =>
+                                    setData("contact_no", e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input
+                                type="email"
+                                value={data.email}
+                                onChange={(e) =>
+                                    setData("email", e.target.value)
+                                }
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={processing}>
+                            Save Changes
+                        </Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+// ─── Main Component with Enhanced Personal Section ─────────────────────────────
 
 export default function EmployeeShow({ employee, activeEmployees = [] }) {
     const [tab, setTab] = useState("personal");
+    const [personalData, setPersonalData] = useState(employee);
 
     const loadOptions = async (search, page) => {
         const response = await axios.get(route("employees.options"), {
@@ -211,7 +602,42 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
         });
     };
 
+    const handleFieldUpdate = (field, value, attachmentUrl) => {
+        setPersonalData((prev) => ({ ...prev, [field]: value }));
+        if (attachmentUrl) {
+            console.log(`Attachment saved for ${field}:`, attachmentUrl);
+        }
+    };
+
     const pal = avatarPalette(employee.emp_id);
+
+    // Define which categories require attachments
+    const categoriesWithAttachments = [
+        {
+            id: "civil_status",
+            label: "Civil Status",
+            requiresFile: true,
+            category: "civil_status_docs",
+        },
+        {
+            id: "educational_attainment",
+            label: "Education",
+            requiresFile: true,
+            category: "education_docs",
+        },
+        {
+            id: "birthday",
+            label: "Birthday",
+            requiresFile: true,
+            category: "birth_certificate",
+        },
+        {
+            id: "emp_firstname",
+            label: "Name Change",
+            requiresFile: true,
+            category: "name_change_docs",
+        },
+    ];
 
     return (
         <AuthenticatedLayout>
@@ -219,7 +645,7 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
 
             <div className="min-h-screen bg-background">
                 {/* ── Sticky Top Bar ──────────────────────────────────── */}
-                <div className="border-b border-border/50 bg-background/90 backdrop-blur-md">
+                <div className="border-b border-border/50 bg-background/90 backdrop-blur-md sticky top-0 z-10">
                     <div className="max-w-5xl mx-auto px-6 py-2.5 flex items-center gap-3">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 font-mono whitespace-nowrap">
                             Active Employee
@@ -250,7 +676,7 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                 </div>
 
                 <div className="max-w-5xl mx-auto px-6 py-8">
-                    {/* ── Profile Header ──────────────────────────────── */}
+                    {/* ── Profile Header with Edit Button ───────────────── */}
                     <div className="flex items-start gap-5 mb-8">
                         <div
                             className={`w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-[20px] font-bold shrink-0 ${pal.bg} ${pal.text}`}
@@ -259,9 +685,15 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                         </div>
 
                         <div className="flex-1 min-w-0 pt-0.5">
-                            <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none mb-1.5">
-                                {employee.emp_name}
-                            </h1>
+                            <div className="flex items-center gap-3 mb-1.5">
+                                <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none">
+                                    {personalData.emp_name || employee.emp_name}
+                                </h1>
+                                <PersonalInfoEditor
+                                    employee={employee}
+                                    onUpdate={() => router.reload()}
+                                />
+                            </div>
                             <p className="text-[13px] text-muted-foreground mb-3 leading-relaxed">
                                 {[
                                     employee.emp_jobtitle,
@@ -294,7 +726,7 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                     </div>
 
                     {/* ── Tabs ────────────────────────────────────────── */}
-                    <div className="border-b border-border/50 flex gap-5 mb-2">
+                    <div className="border-b border-border/50 flex gap-5 mb-6">
                         <TabBtn
                             active={tab === "personal"}
                             onClick={() => setTab("personal")}
@@ -307,62 +739,161 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                         >
                             Work
                         </TabBtn>
+                        <TabBtn
+                            active={tab === "documents"}
+                            onClick={() => setTab("documents")}
+                        >
+                            Documents
+                        </TabBtn>
                     </div>
 
                     {/* ══════════════════════════════════════════════════
-                        PERSONAL TAB
+                        MODERN PERSONAL TAB WITH EDITABLE FIELDS & UPLOADS
                     ══════════════════════════════════════════════════ */}
                     {tab === "personal" && (
                         <>
-                            <SectionDivider title="Basic Information" />
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                <Field
+                            <div className="flex items-center justify-between mb-4">
+                                <SectionDivider title="Basic Information" />
+                                <span className="text-[10px] text-muted-foreground/60">
+                                    Click any field to edit
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+                                <EditableField
                                     label="First Name"
-                                    value={employee.emp_firstname}
+                                    value={personalData.emp_firstname}
+                                    fieldKey="emp_firstname"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("emp_firstname", val)
+                                    }
+                                    category="name_change"
+                                    attachmentRequired={false}
                                 />
-                                <Field
+                                <EditableField
                                     label="Middle Name"
-                                    value={employee.emp_middlename}
+                                    value={personalData.emp_middlename}
+                                    fieldKey="emp_middlename"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("emp_middlename", val)
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Last Name"
-                                    value={employee.emp_lastname}
+                                    value={personalData.emp_lastname}
+                                    fieldKey="emp_lastname"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("emp_lastname", val)
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Nickname"
-                                    value={employee.nickname}
+                                    value={personalData.nickname}
+                                    fieldKey="nickname"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("nickname", val)
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Birthday"
-                                    value={employee.birthday}
+                                    value={personalData.birthday}
+                                    fieldKey="birthday"
+                                    attachmentRequired={true}
+                                    category="birth_certificate"
+                                    onSave={(val, url) =>
+                                        handleFieldUpdate("birthday", val, url)
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Place of Birth"
-                                    value={employee.place_of_birth}
+                                    value={personalData.place_of_birth}
+                                    fieldKey="place_of_birth"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("place_of_birth", val)
+                                    }
                                 />
-                                <Field label="Sex" value={employee.emp_sex} />
-                                <Field
+                                <EditableField
+                                    label="Sex"
+                                    value={personalData.emp_sex}
+                                    fieldKey="emp_sex"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("emp_sex", val)
+                                    }
+                                />
+                                <EditableField
                                     label="Civil Status"
-                                    value={employee.civil_status}
+                                    value={personalData.civil_status}
+                                    fieldKey="civil_status"
+                                    attachmentRequired={true}
+                                    category="civil_status_docs"
+                                    onSave={(val, url) =>
+                                        handleFieldUpdate(
+                                            "civil_status",
+                                            val,
+                                            url,
+                                        )
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Religion"
-                                    value={employee.religion}
+                                    value={personalData.religion}
+                                    fieldKey="religion"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("religion", val)
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Blood Type"
-                                    value={employee.blood_type}
+                                    value={personalData.blood_type}
+                                    fieldKey="blood_type"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("blood_type", val)
+                                    }
                                 />
-                                <Field label="Height" value={employee.height} />
-                                <Field label="Weight" value={employee.weight} />
-                                <Field label="Email" value={employee.email} />
-                                <Field
+                                <EditableField
+                                    label="Height"
+                                    value={personalData.height}
+                                    fieldKey="height"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("height", val)
+                                    }
+                                />
+                                <EditableField
+                                    label="Weight"
+                                    value={personalData.weight}
+                                    fieldKey="weight"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("weight", val)
+                                    }
+                                />
+                                <EditableField
+                                    label="Email"
+                                    value={personalData.email}
+                                    fieldKey="email"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("email", val)
+                                    }
+                                />
+                                <EditableField
                                     label="Contact No"
-                                    value={employee.contact_no}
+                                    value={personalData.contact_no}
+                                    fieldKey="contact_no"
+                                    onSave={(val) =>
+                                        handleFieldUpdate("contact_no", val)
+                                    }
                                 />
-                                <Field
+                                <EditableField
                                     label="Education"
-                                    value={employee.educational_attainment}
+                                    value={personalData.educational_attainment}
+                                    fieldKey="educational_attainment"
+                                    attachmentRequired={true}
+                                    category="education_docs"
+                                    onSave={(val, url) =>
+                                        handleFieldUpdate(
+                                            "educational_attainment",
+                                            val,
+                                            url,
+                                        )
+                                    }
                                 />
                             </div>
 
@@ -441,7 +972,7 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                     )}
 
                     {/* ══════════════════════════════════════════════════
-                        WORK TAB
+                        WORK TAB (unchanged but can be modernized similarly)
                     ══════════════════════════════════════════════════ */}
                     {tab === "work" && (
                         <>
@@ -547,6 +1078,70 @@ export default function EmployeeShow({ employee, activeEmployees = [] }) {
                                     </div>
                                 </>
                             )}
+                        </>
+                    )}
+
+                    {/* ══════════════════════════════════════════════════
+                        DOCUMENTS TAB - Category-Based Upload Zone
+                    ══════════════════════════════════════════════════ */}
+                    {tab === "documents" && (
+                        <>
+                            <SectionDivider title="Document Management" />
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Upload supporting documents for personal
+                                information updates. Each category can have
+                                multiple attachments.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <CategoryUploadCard
+                                    title="Civil Status Documents"
+                                    description="Marriage certificate, annulment papers, etc."
+                                    category="civil_status"
+                                    existingAttachments={
+                                        employee.civil_status_attachments || []
+                                    }
+                                />
+                                <CategoryUploadCard
+                                    title="Education Credentials"
+                                    description="Diploma, transcript, certificates"
+                                    category="education"
+                                    existingAttachments={
+                                        employee.education_attachments || []
+                                    }
+                                />
+                                <CategoryUploadCard
+                                    title="Birth Certificate"
+                                    description="PSA birth certificate or equivalent"
+                                    category="birth_certificate"
+                                    existingAttachments={
+                                        employee.birth_attachments || []
+                                    }
+                                />
+                                <CategoryUploadCard
+                                    title="Government IDs"
+                                    description="SSS, PhilHealth, Pag-IBIG, TIN"
+                                    category="government_ids"
+                                    existingAttachments={
+                                        employee.gov_id_attachments || []
+                                    }
+                                />
+                                <CategoryUploadCard
+                                    title="Name Change Documents"
+                                    description="Court order, affidavit, marriage cert"
+                                    category="name_change"
+                                    existingAttachments={
+                                        employee.name_change_attachments || []
+                                    }
+                                />
+                                <CategoryUploadCard
+                                    title="Other Supporting Docs"
+                                    description="Any additional verification"
+                                    category="other"
+                                    existingAttachments={
+                                        employee.other_attachments || []
+                                    }
+                                />
+                            </div>
                         </>
                     )}
                 </div>
