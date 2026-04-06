@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\General\AdminController;
+use App\Http\Controllers\General\ImportController;
 use App\Http\Controllers\General\ProfileController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\AuthMiddleware;
@@ -15,6 +16,7 @@ Route::redirect('/', "/$app_name");
 Route::prefix($app_name)->middleware(AuthMiddleware::class)->group(function () {
 
   Route::middleware(AdminMiddleware::class)->group(function () {
+
     Route::get("/admin", [AdminController::class, 'index'])->name('admin');
     Route::get("/new-admin", [AdminController::class, 'index_addAdmin'])->name('index_addAdmin');
     Route::post("/add-admin", [AdminController::class, 'addAdmin'])->name('addAdmin');

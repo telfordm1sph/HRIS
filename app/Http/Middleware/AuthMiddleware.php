@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Services\SystemStatusService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -61,7 +62,8 @@ class AuthMiddleware
                 }
             }
 
-            return $next($request)->withCookie($cookie);
+            Cookie::queue($cookie);
+            return $next($request);
         }
 
         // 🔹 Fetch user from authify if session missing or token mismatch
@@ -139,7 +141,8 @@ class AuthMiddleware
             }
         }
 
-        return $next($request)->withCookie($cookie);
+        Cookie::queue($cookie);
+        return $next($request);
     }
 
     /**

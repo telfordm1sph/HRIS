@@ -13,6 +13,8 @@ require __DIR__ . '/auth.php';
 require __DIR__ . '/general.php';
 
 require __DIR__ . '/employee.php';
+
+require __DIR__ . '/import.php';
 Route::get("/demo", [DemoController::class, 'index'])->name('demo');
 
 Route::fallback(function () {

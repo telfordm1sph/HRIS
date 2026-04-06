@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('require:', list\\(d.get\\('require',{}\\).keys\\(\\)\\)\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('require:', list\\(d.get\\('require',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(composer require:*)",
+      "Bash(php artisan:*)",
+      "Bash(php:*)",
+      "Bash(find storage:*)"
     ]
   }
 }
