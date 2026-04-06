@@ -13,16 +13,17 @@ class LookupsSheet implements WithTitle, WithEvents
     // Column letter → lookup key → display header
     // Order here must match what WorkDetailsSheet::NAMED_RANGES maps to
     public const COLUMNS = [
-        'A' => ['key' => 'departments', 'header' => 'Department'],
-        'B' => ['key' => 'prodlines',   'header' => 'Prod Line'],
-        'C' => ['key' => 'job_titles',  'header' => 'Job Title'],
-        'D' => ['key' => 'stations',    'header' => 'Station'],
-        'E' => ['key' => 'statuses',    'header' => 'Emp Status'],
-        'F' => ['key' => 'classes',     'header' => 'Emp Class'],
-        'G' => ['key' => 'shifts',      'header' => 'Shift Type'],
-        'H' => ['key' => 'shuttles',    'header' => 'Shuttle'],
-        'I' => ['key' => 'positions',   'header' => 'Position'],
-        'J' => ['key' => 'teams',       'header' => 'Team'],
+        'A' => ['key' => 'companies',   'header' => 'Company'],
+        'B' => ['key' => 'departments', 'header' => 'Department'],
+        'C' => ['key' => 'prodlines',   'header' => 'Prod Line'],
+        'D' => ['key' => 'job_titles',  'header' => 'Job Title'],
+        'E' => ['key' => 'stations',    'header' => 'Station'],
+        'F' => ['key' => 'statuses',    'header' => 'Emp Status'],
+        'G' => ['key' => 'classes',     'header' => 'Emp Class'],
+        'H' => ['key' => 'shifts',      'header' => 'Shift Type'],
+        'I' => ['key' => 'shuttles',    'header' => 'Shuttle'],
+        'J' => ['key' => 'positions',   'header' => 'Position'],
+        'K' => ['key' => 'teams',       'header' => 'Team'],
     ];
 
     public function __construct(private readonly array $lookups) {}

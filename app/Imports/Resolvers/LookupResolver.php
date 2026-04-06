@@ -3,6 +3,7 @@
 namespace App\Imports\Resolvers;
 
 use App\Models\EmployeeClass;
+use App\Models\EmployeeCompany;
 use App\Models\EmployeeDepartment;
 use App\Models\EmployeePosition;
 use App\Models\EmployeeShift;
@@ -19,6 +20,7 @@ class LookupResolver
 
     public function boot(): void
     {
+        $this->maps['company']     = EmployeeCompany::pluck('id', 'company_name')->map(fn($id) => (int) $id)->toArray();
         $this->maps['department']  = EmployeeDepartment::pluck('id', 'dept_name')->map(fn($id) => (int) $id)->toArray();
         $this->maps['prodline']    = ProdLine::pluck('id', 'pl_name')->map(fn($id) => (int) $id)->toArray();
         $this->maps['job_title']   = JobTitle::pluck('id', 'position')->map(fn($id) => (int) $id)->toArray();

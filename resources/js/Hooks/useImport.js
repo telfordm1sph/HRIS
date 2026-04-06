@@ -1,11 +1,18 @@
-import { useRef, useState } from "react";
-import { router } from "@inertiajs/react";
+import { useEffect, useRef, useState } from "react";
+import { router, usePage } from "@inertiajs/react";
 
-export function useImport(result) {
-    const fileInputRef = useRef(null);
-    const [file, setFile]         = useState(null);
-    const [dragging, setDragging] = useState(false);
+export function useImport() {
+    const { flash } = usePage().props;
+
+    const fileInputRef              = useRef(null);
+    const [file, setFile]           = useState(null);
+    const [dragging, setDragging]   = useState(false);
     const [uploading, setUploading] = useState(false);
+
+    useEffect(() => {
+        if (flash.success) toast.success(flash.success);
+        if (flash.error)   toast.error(flash.error);
+    }, [flash.success, flash.error]);
 
     const handleFile = (f) => {
         if (f && (f.name.endsWith(".xlsx") || f.name.endsWith(".xls"))) {
@@ -37,9 +44,5 @@ export function useImport(result) {
         });
     };
 
-    const totalProcessed = result
-        ? Object.values(result.sheets).reduce((s, r) => s + r.processed, 0)
-        : 0;
-
-    return { fileInputRef, file, dragging, setDragging, uploading, handleFile, handleDrop, handleSubmit, totalProcessed };
+    return { fileInputRef, file, dragging, setDragging, uploading, handleFile, handleDrop, handleSubmit };
 }

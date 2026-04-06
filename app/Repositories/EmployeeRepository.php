@@ -10,6 +10,7 @@ class EmployeeRepository
     public function getFullDetailByEmployid(int $employid): ?EmployeeDetail
     {
         return EmployeeDetail::with([
+            'workDetail.companyRel',
             'workDetail.departmentRel',
             'workDetail.jobTitleRel',
             'workDetail.prodLineRel',
@@ -35,6 +36,7 @@ class EmployeeRepository
     public function getWorkDetailByEmployid(int $employid)
     {
         return EmployeeWorkDetail::with([
+            'companyRel',
             'departmentRel',
             'jobTitleRel',
             'prodLineRel',

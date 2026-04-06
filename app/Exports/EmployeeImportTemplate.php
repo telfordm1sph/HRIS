@@ -13,6 +13,7 @@ use App\Exports\Sheets\SiblingsSheet;
 use App\Exports\Sheets\SpouseSheet;
 use App\Exports\Sheets\WorkDetailsSheet;
 use App\Models\EmployeeClass;
+use App\Models\EmployeeCompany;
 use App\Models\EmployeeDepartment;
 use App\Models\EmployeePosition;
 use App\Models\EmployeeShift;
@@ -31,6 +32,7 @@ class EmployeeImportTemplate implements WithMultipleSheets
     public function __construct()
     {
         $this->lookups = [
+            'companies'   => EmployeeCompany::pluck('company_name')->toArray(),
             'departments' => EmployeeDepartment::pluck('dept_name')->toArray(),
             'prodlines'   => ProdLine::pluck('pl_name')->toArray(),
             'job_titles'  => JobTitle::pluck('position')->toArray(),

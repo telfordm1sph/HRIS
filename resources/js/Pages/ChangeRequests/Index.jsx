@@ -6,7 +6,7 @@ import DiffCell from "@/Components/ChangeRequest/DiffCell";
 import ActionCell from "@/Components/ChangeRequest/ActionCell";
 import { useChangeRequests } from "@/Hooks/useChangeRequests";
 
-export default function ChangeRequestsIndex({ requests, filters, categories }) {
+export default function ChangeRequestsIndex({ requests, filters, categories, shuttles = [] }) {
     const { localFilters, setLocalFilters, applyFilters, handleApprove, handleReject } =
         useChangeRequests(filters);
 
@@ -128,7 +128,7 @@ export default function ChangeRequestsIndex({ requests, filters, categories }) {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 max-w-[280px]">
-                                                <DiffCell oldValue={req.old_value} newValue={req.new_value} />
+                                                <DiffCell oldValue={req.old_value} newValue={req.new_value} category={req.category} shuttles={shuttles} />
                                             </td>
                                             <td className="px-4 py-3">
                                                 {req.attachment ? (

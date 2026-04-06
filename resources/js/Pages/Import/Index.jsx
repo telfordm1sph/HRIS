@@ -1,8 +1,6 @@
-import { Head, usePage } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Button } from "@/components/ui/button";
-import SheetSummary from "@/Components/Import/SheetSummary";
-import ErrorTable from "@/Components/Import/ErrorTable";
 import { useImport } from "@/Hooks/useImport";
 
 const SHEET_DESCRIPTIONS = [
@@ -18,20 +16,8 @@ const SHEET_DESCRIPTIONS = [
 ];
 
 export default function ImportIndex() {
-    const { props } = usePage();
-    const result = props.flash?.import_result ?? null;
-
-    const {
-        fileInputRef,
-        file,
-        dragging,
-        setDragging,
-        uploading,
-        handleFile,
-        handleDrop,
-        handleSubmit,
-        totalProcessed,
-    } = useImport(result);
+    const { fileInputRef, file, dragging, setDragging, uploading, handleFile, handleDrop, handleSubmit } =
+        useImport();
 
     return (
         <AuthenticatedLayout>
@@ -144,25 +130,6 @@ export default function ImportIndex() {
                         </div>
                     </div>
 
-                    {/* Results */}
-                    {result && (
-                        <div className="rounded-xl border border-border/50 p-5 space-y-4">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${result.total_errors === 0 ? "bg-green-500" : "bg-amber-500"}`} />
-                                <p className="text-[13px] font-semibold text-foreground">
-                                    Import complete — {totalProcessed} row{totalProcessed !== 1 ? "s" : ""} processed
-                                </p>
-                            </div>
-
-                            <div className="rounded-lg border border-border/40 px-4 py-1">
-                                {Object.entries(result.sheets).map(([label, r]) => (
-                                    <SheetSummary key={label} label={label} result={r} />
-                                ))}
-                            </div>
-
-                            <ErrorTable errors={result.errors} />
-                        </div>
-                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -90,15 +90,36 @@ export default function EmployeeShow({
             case "name":
                 return <NameForm value={formValue} onChange={setFormValue} />;
             case "civil_status":
-                return <CivilStatusForm value={formValue} onChange={setFormValue} />;
+                return (
+                    <CivilStatusForm
+                        value={formValue}
+                        onChange={setFormValue}
+                    />
+                );
             case "address":
-                return <AddressForm value={formValue} onChange={setFormValue} />;
+                return (
+                    <AddressForm value={formValue} onChange={setFormValue} />
+                );
             case "education":
-                return <EducationForm value={formValue} onChange={setFormValue} />;
+                return (
+                    <EducationForm value={formValue} onChange={setFormValue} />
+                );
             case "father":
-                return <ParentForm value={formValue} onChange={setFormValue} gender="Male" />;
+                return (
+                    <ParentForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        gender="Male"
+                    />
+                );
             case "mother":
-                return <ParentForm value={formValue} onChange={setFormValue} gender="Female" />;
+                return (
+                    <ParentForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        gender="Female"
+                    />
+                );
             case "spouse":
                 return <SpouseForm value={formValue} onChange={setFormValue} />;
             case "children":
@@ -130,7 +151,13 @@ export default function EmployeeShow({
                     />
                 );
             case "others":
-                return <OthersForm value={formValue} onChange={setFormValue} shuttles={shuttles} />;
+                return (
+                    <OthersForm
+                        value={formValue}
+                        onChange={setFormValue}
+                        shuttles={shuttles}
+                    />
+                );
             default:
                 return null;
         }
@@ -160,7 +187,11 @@ export default function EmployeeShow({
                         </div>
                         <div className="flex-1" />
                         <Badge
-                            variant={employee.accstatus == 1 ? "default" : "destructive"}
+                            variant={
+                                employee.accstatus == 1
+                                    ? "default"
+                                    : "destructive"
+                            }
                             className="text-[10px] uppercase tracking-widest font-mono px-2"
                         >
                             {employee.accstatus == 1 ? "Active" : "Inactive"}
@@ -174,7 +205,13 @@ export default function EmployeeShow({
                         <div
                             className={`w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-[20px] font-bold shrink-0 ${pal.bg} ${pal.text}`}
                         >
-                            {employee.emp_name?.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?"}
+                            {employee.emp_name
+                                ?.split(" ")
+                                .filter(Boolean)
+                                .slice(0, 2)
+                                .map((w) => w[0])
+                                .join("")
+                                .toUpperCase() || "?"}
                         </div>
 
                         <div className="flex-1 min-w-0 pt-0.5">
@@ -182,10 +219,17 @@ export default function EmployeeShow({
                                 <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none">
                                     {employee.emp_name}
                                 </h1>
-                                <EditSectionDropdown onSelect={openModal} pendingMap={pendingMap} />
+                                <EditSectionDropdown
+                                    onSelect={openModal}
+                                    pendingMap={pendingMap}
+                                />
                             </div>
                             <p className="text-[13px] text-muted-foreground mb-3 leading-relaxed">
-                                {[employee.emp_jobtitle, employee.emp_dept, employee.emp_prodline]
+                                {[
+                                    employee.emp_jobtitle,
+                                    employee.emp_dept,
+                                    employee.emp_prodline,
+                                ]
                                     .filter(Boolean)
                                     .join("  ·  ") || "—"}
                             </p>
@@ -213,9 +257,24 @@ export default function EmployeeShow({
 
                     {/* ── Tabs ── */}
                     <div className="border-b border-border/50 flex gap-5 mb-2">
-                        <TabBtn active={tab === "personal"} onClick={() => handleTabChange("personal")}>Personal</TabBtn>
-                        <TabBtn active={tab === "work"}     onClick={() => handleTabChange("work")}>Work</TabBtn>
-                        <TabBtn active={tab === "files"}    onClick={() => handleTabChange("files")}>Files</TabBtn>
+                        <TabBtn
+                            active={tab === "personal"}
+                            onClick={() => handleTabChange("personal")}
+                        >
+                            Personal
+                        </TabBtn>
+                        <TabBtn
+                            active={tab === "work"}
+                            onClick={() => handleTabChange("work")}
+                        >
+                            Work
+                        </TabBtn>
+                        <TabBtn
+                            active={tab === "files"}
+                            onClick={() => handleTabChange("files")}
+                        >
+                            Files
+                        </TabBtn>
                     </div>
 
                     {/* ══ PERSONAL TAB ══ */}
@@ -223,39 +282,107 @@ export default function EmployeeShow({
                         <>
                             <SectionDivider title="Basic Information" />
                             <PendingBadge request={pendingMap["name"]} />
-                            <PendingBadge request={pendingMap["civil_status"]} />
+                            <PendingBadge
+                                request={pendingMap["civil_status"]}
+                            />
                             <PendingBadge request={pendingMap["education"]} />
                             <PendingBadge request={pendingMap["others"]} />
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5 mt-3">
-                                <Field label="First Name"     value={employee.emp_firstname} />
-                                <Field label="Middle Name"    value={employee.emp_middlename} />
-                                <Field label="Last Name"      value={employee.emp_lastname} />
-                                <Field label="Nickname"       value={employee.nickname} />
-                                <Field label="Birthday"       value={employee.birthday} />
-                                <Field label="Place of Birth" value={employee.place_of_birth} />
-                                <Field label="Sex"            value={SEX_LABELS[employee.emp_sex] ?? employee.emp_sex} />
-                                <Field label="Civil Status"   value={employee.civil_status} />
-                                <Field label="Religion"       value={employee.religion} />
-                                <Field label="Blood Type"     value={employee.blood_type} />
-                                <Field label="Height"         value={employee.height} />
-                                <Field label="Weight"         value={employee.weight} />
-                                <Field label="Email"          value={employee.email} />
-                                <Field label="Contact No"     value={employee.contact_no} />
-                                <Field label="Education"      value={employee.educational_attainment} />
-                                <Field label="Shuttle"        value={employee.shuttle} />
+                                <Field
+                                    label="First Name"
+                                    value={employee.emp_firstname}
+                                />
+                                <Field
+                                    label="Middle Name"
+                                    value={employee.emp_middlename}
+                                />
+                                <Field
+                                    label="Last Name"
+                                    value={employee.emp_lastname}
+                                />
+                                <Field
+                                    label="Nickname"
+                                    value={employee.nickname}
+                                />
+                                <Field
+                                    label="Birthday"
+                                    value={employee.birthday}
+                                />
+                                <Field
+                                    label="Place of Birth"
+                                    value={employee.place_of_birth}
+                                />
+                                <Field
+                                    label="Sex"
+                                    value={
+                                        SEX_LABELS[employee.emp_sex] ??
+                                        employee.emp_sex
+                                    }
+                                />
+                                <Field
+                                    label="Civil Status"
+                                    value={employee.civil_status}
+                                />
+                                <Field
+                                    label="Religion"
+                                    value={employee.religion}
+                                />
+                                <Field
+                                    label="Blood Type"
+                                    value={employee.blood_type}
+                                />
+                                <Field label="Height" value={employee.height} />
+                                <Field label="Weight" value={employee.weight} />
+                                <Field label="Email" value={employee.email} />
+                                <Field
+                                    label="Contact No"
+                                    value={employee.contact_no}
+                                />
+                                <Field
+                                    label="Education"
+                                    value={employee.educational_attainment}
+                                />
+                                <Field
+                                    label="Shuttle"
+                                    value={employee.shuttle}
+                                />
                             </div>
 
                             <SectionDivider title="Address" />
                             <PendingBadge request={pendingMap["address"]} />
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5 mt-3">
-                                <Field label="House No."   value={employee.address?.house_no} />
-                                <Field label="Barangay"    value={employee.address?.brgy} />
-                                <Field label="City"        value={employee.address?.city} />
-                                <Field label="Province"    value={employee.address?.province} />
-                                <Field label="Perma House." value={employee.address?.perma_house_no} />
-                                <Field label="Perma Brgy." value={employee.address?.perma_brgy} />
-                                <Field label="Perma City"  value={employee.address?.perma_city} />
-                                <Field label="Perma Prov." value={employee.address?.perma_province} />
+                                <Field
+                                    label="House No."
+                                    value={employee.address?.house_no}
+                                />
+                                <Field
+                                    label="Barangay"
+                                    value={employee.address?.brgy}
+                                />
+                                <Field
+                                    label="City"
+                                    value={employee.address?.city}
+                                />
+                                <Field
+                                    label="Province"
+                                    value={employee.address?.province}
+                                />
+                                <Field
+                                    label="Perma House."
+                                    value={employee.address?.perma_house_no}
+                                />
+                                <Field
+                                    label="Perma Brgy."
+                                    value={employee.address?.perma_brgy}
+                                />
+                                <Field
+                                    label="Perma City"
+                                    value={employee.address?.perma_city}
+                                />
+                                <Field
+                                    label="Perma Prov."
+                                    value={employee.address?.perma_province}
+                                />
                             </div>
 
                             <SectionDivider title="Family" />
@@ -263,40 +390,80 @@ export default function EmployeeShow({
                                 <PendingBadge request={pendingMap["father"]} />
                                 <PendingBadge request={pendingMap["mother"]} />
                                 <PendingBadge request={pendingMap["spouse"]} />
-                                <PendingBadge request={pendingMap["children"]} />
-                                <PendingBadge request={pendingMap["siblings"]} />
+                                <PendingBadge
+                                    request={pendingMap["children"]}
+                                />
+                                <PendingBadge
+                                    request={pendingMap["siblings"]}
+                                />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FamilyTable
                                     title="Parents"
-                                    columns={["Name", "Birthday", "Age", "Gender"]}
+                                    columns={[
+                                        "Name",
+                                        "Birthday",
+                                        "Age",
+                                        "Gender",
+                                    ]}
                                     rows={(employee.parent ?? []).map((p) => ({
-                                        name: p.parent_name, bday: p.parent_bday, age: p.parent_age, gender: p.parent_gender,
+                                        name: p.parent_name,
+                                        bday: p.parent_bday,
+                                        age: p.parent_age,
+                                        gender: p.parent_gender,
                                     }))}
                                     emptyMsg="No parents on record."
                                 />
                                 <FamilyTable
                                     title="Spouse"
-                                    columns={["Name", "Birthday", "Age", "Gender"]}
+                                    columns={[
+                                        "Name",
+                                        "Birthday",
+                                        "Age",
+                                        "Gender",
+                                    ]}
                                     rows={(employee.spouse ?? []).map((sp) => ({
-                                        name: sp.spouse_name, bday: sp.spouse_bday, age: sp.spouse_age, gender: sp.spouse_gender,
+                                        name: sp.spouse_name,
+                                        bday: sp.spouse_bday,
+                                        age: sp.spouse_age,
+                                        gender: sp.spouse_gender,
                                     }))}
                                     emptyMsg="No spouse on record."
                                 />
                                 <FamilyTable
                                     title="Siblings"
-                                    columns={["Name", "Birthday", "Age", "Gender"]}
-                                    rows={(employee.siblings ?? []).map((s) => ({
-                                        name: s.sibling_name, bday: s.sibling_bday, age: s.sibling_age, gender: s.sibling_gender,
-                                    }))}
+                                    columns={[
+                                        "Name",
+                                        "Birthday",
+                                        "Age",
+                                        "Gender",
+                                    ]}
+                                    rows={(employee.siblings ?? []).map(
+                                        (s) => ({
+                                            name: s.sibling_name,
+                                            bday: s.sibling_bday,
+                                            age: s.sibling_age,
+                                            gender: s.sibling_gender,
+                                        }),
+                                    )}
                                     emptyMsg="No siblings on record."
                                 />
                                 <FamilyTable
                                     title="Children"
-                                    columns={["Name", "Birthday", "Age", "Gender"]}
-                                    rows={(employee.children ?? []).map((c) => ({
-                                        name: c.child_name, bday: c.child_bday, age: c.child_age, gender: c.child_gender,
-                                    }))}
+                                    columns={[
+                                        "Name",
+                                        "Birthday",
+                                        "Age",
+                                        "Gender",
+                                    ]}
+                                    rows={(employee.children ?? []).map(
+                                        (c) => ({
+                                            name: c.child_name,
+                                            bday: c.child_bday,
+                                            age: c.child_age,
+                                            gender: c.child_gender,
+                                        }),
+                                    )}
                                     emptyMsg="No children on record."
                                 />
                             </div>
@@ -308,29 +475,85 @@ export default function EmployeeShow({
                         <>
                             <SectionDivider title="Work Information" />
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                <Field label="Department"       value={employee.emp_dept} />
-                                <Field label="Job Title"        value={employee.emp_jobtitle} />
-                                <Field label="Product Line"     value={employee.emp_prodline} />
-                                <Field label="Station"          value={employee.emp_station} />
-                                <Field label="Team"             value={employee.team} />
-                                <Field label="Position"         value={employee.emp_position} />
-                                <Field label="Employee Status"  value={employee.emp_status} />
-                                <Field label="Employee Class"   value={employee.emp_class} />
-                                <Field label="Shift Type"       value={employee.shift_type} />
-                                <Field label="Date Hired"       value={employee.date_hired} />
-                                <Field label="Date Regularized" value={employee.date_reg} />
-                                <Field label="Service Length"   value={employee.service_length} />
+                                <Field
+                                    label="Company"
+                                    value={employee.company}
+                                />
+                                <Field
+                                    label="Department"
+                                    value={employee.emp_dept}
+                                />
+                                <Field
+                                    label="Job Title"
+                                    value={employee.emp_jobtitle}
+                                />
+                                <Field
+                                    label="Product Line"
+                                    value={employee.emp_prodline}
+                                />
+                                <Field
+                                    label="Station"
+                                    value={employee.emp_station}
+                                />
+                                <Field label="Team" value={employee.team} />
+                                <Field
+                                    label="Position"
+                                    value={employee.emp_position}
+                                />
+                                <Field
+                                    label="Employee Status"
+                                    value={employee.emp_status}
+                                />
+                                <Field
+                                    label="Employee Class"
+                                    value={employee.emp_class}
+                                />
+                                <Field
+                                    label="Shift Type"
+                                    value={employee.shift_type}
+                                />
+                                <Field
+                                    label="Date Hired"
+                                    value={employee.date_hired}
+                                />
+                                <Field
+                                    label="Date Regularized"
+                                    value={employee.date_reg}
+                                />
+                                <Field
+                                    label="Service Length"
+                                    value={employee.service_length}
+                                />
                             </div>
 
                             {employee.gov_info && (
                                 <>
                                     <SectionDivider title="Government Information" />
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                        <Field label="TIN No"        value={employee.gov_info.tin_no} />
-                                        <Field label="SSS No"        value={employee.gov_info.sss_no} />
-                                        <Field label="PhilHealth No" value={employee.gov_info.philhealth_no} />
-                                        <Field label="Pag-IBIG No"   value={employee.gov_info.pagibig_no} />
-                                        <Field label="Bank Account"  value={employee.gov_info.bank_acct_no} />
+                                        <Field
+                                            label="TIN No"
+                                            value={employee.gov_info.tin_no}
+                                        />
+                                        <Field
+                                            label="SSS No"
+                                            value={employee.gov_info.sss_no}
+                                        />
+                                        <Field
+                                            label="PhilHealth No"
+                                            value={
+                                                employee.gov_info.philhealth_no
+                                            }
+                                        />
+                                        <Field
+                                            label="Pag-IBIG No"
+                                            value={employee.gov_info.pagibig_no}
+                                        />
+                                        <Field
+                                            label="Bank Account"
+                                            value={
+                                                employee.gov_info.bank_acct_no
+                                            }
+                                        />
                                     </div>
                                 </>
                             )}
@@ -339,9 +562,21 @@ export default function EmployeeShow({
                                 <>
                                     <SectionDivider title="Approvers" />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        <ApproverCard label="Approver 1" value={employee.approver.approver1} colorId={1} />
-                                        <ApproverCard label="Approver 2" value={employee.approver.approver2} colorId={2} />
-                                        <ApproverCard label="Approver 3" value={employee.approver.approver3} colorId={3} />
+                                        <ApproverCard
+                                            label="Approver 1"
+                                            value={employee.approver.approver1}
+                                            colorId={1}
+                                        />
+                                        <ApproverCard
+                                            label="Approver 2"
+                                            value={employee.approver.approver2}
+                                            colorId={2}
+                                        />
+                                        <ApproverCard
+                                            label="Approver 3"
+                                            value={employee.approver.approver3}
+                                            colorId={3}
+                                        />
                                     </div>
                                 </>
                             )}
@@ -350,7 +585,10 @@ export default function EmployeeShow({
 
                     {/* ══ FILES TAB ══ */}
                     {tab === "files" && (
-                        <FilesTab attachments={attachments} loading={attachmentsLoading} />
+                        <FilesTab
+                            attachments={attachments}
+                            loading={attachmentsLoading}
+                        />
                     )}
                 </div>
             </div>

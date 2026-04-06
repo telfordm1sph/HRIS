@@ -92,6 +92,8 @@ class EmployeeService
                 ]),
 
                 // 🏢 Work
+                'company_id'      => $work->company       ?? null,
+                'company'         => $work->companyRel->company_name ?? null,
                 'emp_dept_id'      => $work->department   ?? null,
                 'emp_dept'         => $work->departmentRel->dept_name ?? null,
                 'emp_jobtitle_id'  => $work->job_title    ?? null,

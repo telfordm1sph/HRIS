@@ -9,7 +9,7 @@ class EmployeeGovInfo extends Model
 {
     use Loggable;
     protected $table = 'employee_gov_info';
-
+    protected $connection = 'masterlist';
     public $timestamps = false;
 
     protected $fillable = [

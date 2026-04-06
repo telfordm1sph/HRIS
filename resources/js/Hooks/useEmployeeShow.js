@@ -26,7 +26,8 @@ function buildOldValue(category, employee) {
                 perma_province: employee.address?.perma_province ?? "",
             };
         case "father": {
-            const f = employee.parent?.find((p) => p.parent_gender === "Male") ?? {};
+            const f =
+                employee.parent?.find((p) => p.parent_gender === "Male") ?? {};
             return {
                 parent_name: f.parent_name ?? "",
                 parent_bday: f.parent_bday ?? "",
@@ -35,7 +36,9 @@ function buildOldValue(category, employee) {
             };
         }
         case "mother": {
-            const m = employee.parent?.find((p) => p.parent_gender === "Female") ?? {};
+            const m =
+                employee.parent?.find((p) => p.parent_gender === "Female") ??
+                {};
             return {
                 parent_name: m.parent_name ?? "",
                 parent_bday: m.parent_bday ?? "",
@@ -58,7 +61,7 @@ function buildOldValue(category, employee) {
                 blood_type: employee.blood_type,
                 height: employee.height,
                 weight: employee.weight,
-                shuttle_id: employee.shuttle_id ?? null,
+                shuttle: employee.shuttle ?? null,
             };
         default:
             return {};
@@ -66,15 +69,18 @@ function buildOldValue(category, employee) {
 }
 
 export function useEmployeeShow(employee, changeRequests = {}) {
-    const [tab, setTab]                           = useState("personal");
+    const [tab, setTab] = useState("personal");
     const [attachmentsLoading, setAttachmentsLoading] = useState(false);
-    const attachmentsFetched                      = useRef(false);
-    const [modalCategory, setModalCategory]       = useState(null);
-    const [formValue, setFormValue]               = useState(null);
+    const attachmentsFetched = useRef(false);
+    const [modalCategory, setModalCategory] = useState(null);
+    const [formValue, setFormValue] = useState(null);
     const [oldValueSnapshot, setOldValueSnapshot] = useState(null);
-    const [pendingMap, setPendingMap]             = useState(changeRequests);
+    const [pendingMap, setPendingMap] = useState(changeRequests);
 
-    const pal = useMemo(() => avatarPalette(employee.emp_id), [employee.emp_id]);
+    const pal = useMemo(
+        () => avatarPalette(employee.emp_id),
+        [employee.emp_id],
+    );
 
     const loadOptions = useCallback(
         (search, page) =>
@@ -85,12 +91,15 @@ export function useEmployeeShow(employee, changeRequests = {}) {
                     onSuccess: (pg) => {
                         const result = pg.props.activeEmployees;
                         resolve({
-                            options: (result?.data ?? result ?? []).map((emp) => ({
-                                value: emp.employid,
-                                label: `${emp.employid} — ${emp.emp_name}`,
-                            })),
+                            options: (result?.data ?? result ?? []).map(
+                                (emp) => ({
+                                    value: emp.employid,
+                                    label: `${emp.employid} — ${emp.emp_name}`,
+                                }),
+                            ),
                             hasMore:
-                                (result?.current_page ?? 1) < (result?.last_page ?? 1),
+                                (result?.current_page ?? 1) <
+                                (result?.last_page ?? 1),
                         });
                     },
                     onError: () => resolve({ options: [], hasMore: false }),
@@ -100,14 +109,21 @@ export function useEmployeeShow(employee, changeRequests = {}) {
     );
 
     const employeeOptions = useMemo(
-        () => [{ value: employee.emp_id, label: `${employee.emp_id} — ${employee.emp_name}` }],
+        () => [
+            {
+                value: employee.emp_id,
+                label: `${employee.emp_id} — ${employee.emp_name}`,
+            },
+        ],
         [employee.emp_id, employee.emp_name],
     );
 
     const handleEmployeeChange = useCallback(
         (employid) => {
             if (!employid || employid === employee.emp_id) return;
-            router.visit(route("employees.show", { employid }), { preserveScroll: false });
+            router.visit(route("employees.show", { employid }), {
+                preserveScroll: false,
+            });
         },
         [employee.emp_id],
     );
@@ -129,7 +145,10 @@ export function useEmployeeShow(employee, changeRequests = {}) {
     }, []);
 
     const handleSuccess = useCallback((newRequest) => {
-        setPendingMap((prev) => ({ ...prev, [newRequest.category]: newRequest }));
+        setPendingMap((prev) => ({
+            ...prev,
+            [newRequest.category]: newRequest,
+        }));
     }, []);
 
     const handleTabChange = useCallback((newTab) => {

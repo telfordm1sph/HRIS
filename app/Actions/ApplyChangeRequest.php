@@ -9,6 +9,7 @@ use App\Models\EmployeeDetail;
 use App\Models\EmployeeParent;
 use App\Models\EmployeeSibling;
 use App\Models\EmployeeSpouse;
+use App\Models\EmployeeWorkDetail;
 use Illuminate\Support\Facades\DB;
 
 class ApplyChangeRequest
@@ -81,6 +82,10 @@ class ApplyChangeRequest
                 'height'      => $data['height']      ?? null,
                 'weight'      => $data['weight']      ?? null,
             ]);
+
+        EmployeeWorkDetail::on('masterlist')
+            ->where('employid', $employid)
+            ->update(['shuttle' => $data['shuttle'] ?? null]);
     }
 
     // ─── employee_address update ──────────────────────────────────────────────

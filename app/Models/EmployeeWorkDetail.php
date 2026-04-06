@@ -37,7 +37,10 @@ class EmployeeWorkDetail extends Model
     // =========================
     // LOOKUP RELATIONSHIPS
     // =========================
-
+    public function companyRel()
+    {
+        return $this->belongsTo(EmployeeCompany::class, 'company');
+    }
     public function departmentRel()
     {
         return $this->belongsTo(EmployeeDepartment::class, 'department');

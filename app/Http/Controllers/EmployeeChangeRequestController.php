@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ChangeRequestResource;
 use App\Models\EmployeeChangeRequest;
 use App\Repositories\EmployeeAttachmentRepository;
+use App\Repositories\ShuttleRepository;
 use App\Services\EmployeeChangeRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,8 @@ use Inertia\Response;
 class EmployeeChangeRequestController extends Controller
 {
     public function __construct(
-        protected EmployeeChangeRequestService $service
+        protected EmployeeChangeRequestService $service,
+        protected ShuttleRepository $shuttleRepository,
     ) {}
 
     // ─── HR Table Page ───────────────────────────────────────────────────────
@@ -28,6 +30,7 @@ class EmployeeChangeRequestController extends Controller
             'requests'   => ChangeRequestResource::collection($this->service->getAllForHR($filters)),
             'filters'    => $filters,
             'categories' => EmployeeChangeRequest::CATEGORIES,
+            'shuttles'   => $this->shuttleRepository->getAll(),
         ]);
     }
 

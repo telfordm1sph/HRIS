@@ -33,6 +33,15 @@ class ImportController extends Controller
         $import = new EmployeeImport();
         Excel::import($import, $request->file('file'));
 
-        return back()->with('import_result', $import->getResult());
+        $result = $import->getResult();
+        $total  = collect($result['sheets'])->sum('processed');
+
+        if ($result['total_errors'] > 0) {
+            return back()
+                ->with('success', "Import complete — {$total} row(s) processed.")
+                ->with('error', "{$result['total_errors']} row(s) had errors and were skipped.");
+        }
+
+        return back()->with('success', "Import complete — {$total} row(s) processed successfully.");
     }
 }

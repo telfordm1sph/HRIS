@@ -39,17 +39,17 @@ class WorkDetailsImportSheet implements ToCollection, WithStartRow
             }
 
             $rowErrors = [];
-
-            $department  = $this->resolver->resolveOrError('department',  $row[2],  $rowNum, 'Department',        $rowErrors);
-            $prodline    = $this->resolver->resolveOrError('prodline',    $row[3],  $rowNum, 'Production Line',   $rowErrors);
-            $jobTitle    = $this->resolver->resolveOrError('job_title',   $row[4],  $rowNum, 'Job Title',         $rowErrors);
-            $station     = $this->resolver->resolveOrError('station',     $row[5],  $rowNum, 'Station',           $rowErrors);
-            $team        = $this->resolver->resolveOrError('team',        $row[6],  $rowNum, 'Team',              $rowErrors);
-            $empstatus   = $this->resolver->resolveOrError('empstatus',   $row[7],  $rowNum, 'Employment Status', $rowErrors);
-            $empclass    = $this->resolver->resolveOrError('empclass',    $row[8],  $rowNum, 'Employment Class',  $rowErrors);
-            $shiftType   = $this->resolver->resolveOrError('shift_type',  $row[9],  $rowNum, 'Shift Type',        $rowErrors);
-            $shuttle     = $this->resolver->resolveOrError('shuttle',     $row[10], $rowNum, 'Shuttle',           $rowErrors);
-            $empposition = $this->resolver->resolveOrError('empposition', $row[11], $rowNum, 'Position',          $rowErrors);
+            $company     = $this->resolver->resolveOrError('company',     $row[2],  $rowNum, 'Company',           $rowErrors);
+            $department  = $this->resolver->resolveOrError('department',  $row[3],  $rowNum, 'Department',        $rowErrors);
+            $prodline    = $this->resolver->resolveOrError('prodline',    $row[4],  $rowNum, 'Production Line',   $rowErrors);
+            $jobTitle    = $this->resolver->resolveOrError('job_title',   $row[5],  $rowNum, 'Job Title',         $rowErrors);
+            $station     = $this->resolver->resolveOrError('station',     $row[6],  $rowNum, 'Station',           $rowErrors);
+            $team        = $this->resolver->resolveOrError('team',        $row[7],  $rowNum, 'Team',              $rowErrors);
+            $empstatus   = $this->resolver->resolveOrError('empstatus',   $row[8],  $rowNum, 'Employment Status', $rowErrors);
+            $empclass    = $this->resolver->resolveOrError('empclass',    $row[9],  $rowNum, 'Employment Class',  $rowErrors);
+            $shiftType   = $this->resolver->resolveOrError('shift_type',  $row[10], $rowNum, 'Shift Type',        $rowErrors);
+            $shuttle     = $this->resolver->resolveOrError('shuttle',     $row[11], $rowNum, 'Shuttle',           $rowErrors);
+            $empposition = $this->resolver->resolveOrError('empposition', $row[12], $rowNum, 'Position',          $rowErrors);
 
             if (!empty($rowErrors)) {
                 $this->errors   = array_merge($this->errors, $rowErrors);
@@ -74,7 +74,7 @@ class WorkDetailsImportSheet implements ToCollection, WithStartRow
                         'empclass'   => $empclass,
                         'shift_type' => $shiftType,
                         'shuttle'    => $shuttle,
-                        'empposition'=> $empposition,
+                        'empposition' => $empposition,
                         'date_hired' => $dateHired,
                         'date_reg'   => $dateReg,
                     ]

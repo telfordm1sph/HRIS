@@ -1,7 +1,21 @@
 import { useState } from "react";
 
-export default function DiffCell({ oldValue, newValue }) {
+// Fields that store a numeric FK — maps field key → shuttle lookup key
+const FK_LABEL_MAPS = {
+    shuttle: "shuttle",
+};
+
+export default function DiffCell({ oldValue, newValue, category, shuttles = [] }) {
     const [expanded, setExpanded] = useState(false);
+
+    // Build id→name map for shuttle
+    const shuttleMap = Object.fromEntries(shuttles.map((s) => [s.id, s.shuttle_name]));
+
+    const resolveLabel = (key, val) => {
+        if (val == null || val === "") return null;
+        if (key === "shuttle") return shuttleMap[val] ?? val;
+        return val;
+    };
 
     if (Array.isArray(newValue)) {
         return (
@@ -24,17 +38,21 @@ export default function DiffCell({ oldValue, newValue }) {
 
     return (
         <div className="space-y-1">
-            {changed.map((k) => (
-                <div key={k} className="flex items-start gap-1.5 text-[11.5px]">
-                    <span className="text-muted-foreground/50 font-mono min-w-[80px] shrink-0">{k}</span>
-                    <span className="text-red-600 dark:text-red-400 line-through mr-1">
-                        {oldValue?.[k] || <span className="not-italic opacity-40">empty</span>}
-                    </span>
-                    <span className="text-green-700 dark:text-green-400">
-                        {newValue?.[k] || <span className="opacity-40">empty</span>}
-                    </span>
-                </div>
-            ))}
+            {changed.map((k) => {
+                const oldDisplay = resolveLabel(k, oldValue?.[k]);
+                const newDisplay = resolveLabel(k, newValue?.[k]);
+                return (
+                    <div key={k} className="flex items-start gap-1.5 text-[11.5px]">
+                        <span className="text-muted-foreground/50 font-mono min-w-[80px] shrink-0">{k}</span>
+                        <span className="text-red-600 dark:text-red-400 line-through mr-1">
+                            {oldDisplay || <span className="not-italic opacity-40">empty</span>}
+                        </span>
+                        <span className="text-green-700 dark:text-green-400">
+                            {newDisplay || <span className="opacity-40">empty</span>}
+                        </span>
+                    </div>
+                );
+            })}
         </div>
     );
 }

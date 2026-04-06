@@ -34,7 +34,12 @@ const Select = ({ value, onChange, options, placeholder = "Select..." }) => (
 );
 
 // Used for fields with >5 options — searchable combobox
-const SearchSelect = ({ value, onChange, options, placeholder = "Select..." }) => (
+const SearchSelect = ({
+    value,
+    onChange,
+    options,
+    placeholder = "Select...",
+}) => (
     <Combobox
         options={options}
         value={value ?? ""}
@@ -363,9 +368,16 @@ export function SpouseForm({ value = [], onChange }) {
 // ─── OthersForm ───────────────────────────────────────────────────────────────
 
 // 8 options — searchable
-const BLOOD_TYPE_OPTIONS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
-    (v) => ({ value: v, label: v }),
-);
+const BLOOD_TYPE_OPTIONS = [
+    "A+",
+    "A-",
+    "B+",
+    "B-",
+    "AB+",
+    "AB-",
+    "O+",
+    "O-",
+].map((v) => ({ value: v, label: v }));
 
 // 7 options — searchable
 const RELIGION_OPTIONS = [
@@ -441,11 +453,12 @@ export function OthersForm({ value, onChange, shuttles = [] }) {
                 <Field label="Shuttle">
                     <Combobox
                         options={shuttleOptions}
-                        value={value.shuttle_id ?? ""}
+                        value={value.shuttle ?? ""}
                         onChange={(v) =>
                             onChange({
                                 ...value,
-                                shuttle_id: v != null && v !== "" ? Number(v) : null,
+                                shuttle:
+                                    v != null && v !== "" ? Number(v) : null,
                             })
                         }
                         placeholder="No shuttle assigned"

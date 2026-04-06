@@ -21,7 +21,7 @@ class WorkDetailsSheet implements WithTitle, WithHeadings, FromArray, WithColumn
     // Column → [header, lookup key (null = free text)]
     private const COLUMNS = [
         'A' => ['Employee ID',               null],
-        'B' => ['Company',                   null],
+        'B' => ['Company',                   'companies'],
         'C' => ['Department',                'departments'],
         'D' => ['Production Line',           'prodlines'],
         'E' => ['Job Title',                 'job_titles'],
@@ -56,10 +56,20 @@ class WorkDetailsSheet implements WithTitle, WithHeadings, FromArray, WithColumn
     public function columnWidths(): array
     {
         return [
-            'A' => 14, 'B' => 18, 'C' => 22, 'D' => 22,
-            'E' => 28, 'F' => 18, 'G' => 14, 'H' => 22,
-            'I' => 20, 'J' => 20, 'K' => 18, 'L' => 20,
-            'M' => 24, 'N' => 24,
+            'A' => 14,
+            'B' => 18,
+            'C' => 22,
+            'D' => 22,
+            'E' => 28,
+            'F' => 18,
+            'G' => 14,
+            'H' => 22,
+            'I' => 20,
+            'J' => 20,
+            'K' => 18,
+            'L' => 20,
+            'M' => 24,
+            'N' => 24,
         ];
     }
 
