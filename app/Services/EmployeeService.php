@@ -210,6 +210,60 @@ class EmployeeService
             ],
         ];
     }
+    public function getEmployeeListForTable(array $params = []): array
+    {
+        $result = $this->repository->getEmployeeListWithWorkDetail($params);
+
+        $result['data'] = array_map(function ($e) {
+            $work = $e->workDetail;
+
+            return [
+                // Personal
+                'emp_id'                 => $e->employid,
+                'firstname'              => $e->firstname,
+                'middlename'             => $e->middlename,
+                'lastname'               => $e->lastname,
+                'nickname'               => $e->nickname,
+                'birthday'               => $e->birthday,
+                'place_of_birth'         => $e->place_of_birth,
+                'emp_sex'                => $e->emp_sex == 1 ? 'Male' : ($e->emp_sex == 2 ? 'Female' : null),
+                'civil_status'           => $e->civil_status,
+                'religion'               => $e->religion,
+                'blood_type'             => $e->blood_type,
+                'height'                 => $e->height,
+                'weight'                 => $e->weight,
+                'email'                  => $e->email,
+                'contact_no'             => $e->contact_no,
+                'educational_attainment' => $e->educational_attainment,
+
+                // Work
+                'company'       => $work?->companyRel?->company_name,
+                'dept'          => $work?->departmentRel?->dept_name,
+                'job_title'     => $work?->jobTitleRel?->position,
+                'prod_line'     => $work?->prodLineRel?->pl_name,
+                'station'       => $work?->stationRel?->station_name,
+                'team'          => $work?->teamRel?->team_name,
+                'emp_position'  => $work?->empPositionRel?->emp_position_name,
+                'emp_status'    => $work?->statusRel?->status_name,
+                'emp_class'     => $work?->classRel?->class_name,
+                'shift_type'    => $work?->shiftRel?->shift_name,
+                'shuttle'       => $work?->shuttleRel?->shuttle_name,
+                'date_hired'    => $work?->date_hired,
+                'date_reg'      => $work?->date_reg,
+                'service_length'=> $work?->service_length,
+
+                // Government
+                'tin_no'        => $work?->govInfo?->tin_no,
+                'sss_no'        => $work?->govInfo?->sss_no,
+                'philhealth_no' => $work?->govInfo?->philhealth_no,
+                'pagibig_no'    => $work?->govInfo?->pagibig_no,
+                'bank_acct_no'  => $work?->govInfo?->bank_acct_no,
+            ];
+        }, $result['data']);
+
+        return $result;
+    }
+
     public function getActiveEmployeeList(array $params = []): array
     {
         $result = $this->repository->getActiveEmployeeList($params);

@@ -5,7 +5,8 @@
       "Bash(composer require:*)",
       "Bash(php artisan:*)",
       "Bash(php:*)",
-      "Bash(find storage:*)"
+      "Bash(find storage:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
