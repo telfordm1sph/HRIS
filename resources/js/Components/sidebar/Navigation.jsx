@@ -2,14 +2,10 @@ import { usePage } from "@inertiajs/react";
 import SidebarLink from "@/Components/sidebar/SidebarLink";
 
 import {
-    ClipboardList,
-    FileText,
-    Table2,
-    Box,
-    Layers,
     User,
-    UserRoundPenIcon,
-    ImportIcon,
+    Users,
+    ClipboardList,
+    Upload,
 } from "lucide-react";
 import Dropdown from "./DropDown";
 
@@ -23,22 +19,27 @@ export default function NavLinks({ isSidebarOpen }) {
             style={{ scrollbarWidth: "none" }}
         >
             <SidebarLink
-                href={route("employees.show", emp_data.emp_id)}
+                href={route("employees.show", btoa(emp_data.emp_id))}
                 label="Details"
                 icon={<User className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
             <SidebarLink
-                href={route("change-requests.index")}
-                label="Change Requests"
-                icon={<UserRoundPenIcon className="w-5 h-5" />}
+                href={route("employees.index")}
+                label="Employee List"
+                icon={<Users className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
-
+            <SidebarLink
+                href={route("change-requests.index")}
+                label="Change Requests"
+                icon={<ClipboardList className="w-5 h-5" />}
+                isSidebarOpen={isSidebarOpen}
+            />
             <SidebarLink
                 href={route("import.index")}
                 label="Import"
-                icon={<ImportIcon className="w-5 h-5" />}
+                icon={<Upload className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
         </nav>

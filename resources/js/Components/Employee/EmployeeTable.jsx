@@ -115,7 +115,7 @@ export default function EmployeeTable({ data }) {
     }, [table]);
 
     function handleRowClick(empId) {
-        router.visit(route("employees.show", { employid: empId }));
+        router.visit(route("employees.show", { employid: btoa(empId) }));
     }
 
     return (

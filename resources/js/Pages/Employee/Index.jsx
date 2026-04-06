@@ -14,11 +14,16 @@ export default function EmployeeIndex({ employees, filters, lookups }) {
         department: filters.department ?? "",
         status:     filters.status     ?? "",
         class:      filters.class      ?? "",
+        per_page:   filters.per_page   ?? "25",
     });
+
+    function encodeFilters(f) {
+        return btoa(JSON.stringify(f));
+    }
 
     function applyFilters(overrides = {}) {
         const merged = { ...localFilters, ...overrides, page: 1 };
-        router.get(route("employees.index"), merged, {
+        router.get(route("employees.index"), { filters: encodeFilters(merged) }, {
             preserveScroll: true,
             replace: true,
         });
@@ -27,7 +32,7 @@ export default function EmployeeIndex({ employees, filters, lookups }) {
     function goToPage(page) {
         router.get(
             route("employees.index"),
-            { ...localFilters, page },
+            { filters: encodeFilters({ ...localFilters, page }) },
             { preserveScroll: true, replace: true }
         );
     }
@@ -67,91 +72,57 @@ export default function EmployeeIndex({ employees, filters, lookups }) {
                 </div>
 
                 <div className="mx-auto px-6 py-6">
-                    {/* ── Filters ── */}
-                    <div className="flex flex-wrap items-center gap-3 mb-5">
+                    {/* ── Filters toolbar ── */}
+                    <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-0.5">
                         {/* Search */}
-                        <div className="relative">
+                        <div className="relative shrink-0">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
                             <Input
                                 value={localFilters.search}
                                 onChange={(e) => setLocalFilters((f) => ({ ...f, search: e.target.value }))}
                                 onKeyDown={(e) => e.key === "Enter" && applyFilters()}
                                 placeholder="Search name or ID…"
-                                className="pl-8 w-52 text-[12px] h-8"
+                                className="pl-8 w-56 text-[12px] h-8"
                             />
                         </div>
 
-                        {/* Company */}
-                        <select
-                            value={localFilters.company}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, company: e.target.value }));
-                                applyFilters({ company: e.target.value });
-                            }}
-                            className="rounded-md border border-input bg-background px-3 py-1.5 text-[12px] font-mono h-8"
-                        >
-                            <option value="">All Companies</option>
-                            {Object.entries(lookups.companies).map(([id, name]) => (
-                                <option key={id} value={id}>{name}</option>
-                            ))}
-                        </select>
+                        {/* Divider */}
+                        <div className="h-5 w-px bg-border shrink-0" />
 
-                        {/* Department */}
-                        <select
-                            value={localFilters.department}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, department: e.target.value }));
-                                applyFilters({ department: e.target.value });
-                            }}
-                            className="rounded-md border border-input bg-background px-3 py-1.5 text-[12px] font-mono h-8"
-                        >
-                            <option value="">All Departments</option>
-                            {Object.entries(lookups.departments).map(([id, name]) => (
-                                <option key={id} value={id}>{name}</option>
-                            ))}
-                        </select>
+                        {/* Dropdowns */}
+                        {[
+                            { key: "company",    placeholder: "Company",    options: lookups.companies },
+                            { key: "department", placeholder: "Department", options: lookups.departments },
+                            { key: "status",     placeholder: "Status",     options: lookups.statuses },
+                            { key: "class",      placeholder: "Class",      options: lookups.classes },
+                        ].map(({ key, placeholder, options }) => (
+                            <select
+                                key={key}
+                                value={localFilters[key]}
+                                onChange={(e) => {
+                                    setLocalFilters((f) => ({ ...f, [key]: e.target.value }));
+                                    applyFilters({ [key]: e.target.value });
+                                }}
+                                className="shrink-0 rounded-md border border-input bg-background px-3 py-1.5 text-[12px] h-8 text-muted-foreground focus:text-foreground"
+                            >
+                                <option value="">All {placeholder}s</option>
+                                {Object.entries(options).map(([id, name]) => (
+                                    <option key={id} value={id}>{name}</option>
+                                ))}
+                            </select>
+                        ))}
 
-                        {/* Status */}
-                        <select
-                            value={localFilters.status}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, status: e.target.value }));
-                                applyFilters({ status: e.target.value });
-                            }}
-                            className="rounded-md border border-input bg-background px-3 py-1.5 text-[12px] font-mono h-8"
-                        >
-                            <option value="">All Statuses</option>
-                            {Object.entries(lookups.statuses).map(([id, name]) => (
-                                <option key={id} value={id}>{name}</option>
-                            ))}
-                        </select>
-
-                        {/* Class */}
-                        <select
-                            value={localFilters.class}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, class: e.target.value }));
-                                applyFilters({ class: e.target.value });
-                            }}
-                            className="rounded-md border border-input bg-background px-3 py-1.5 text-[12px] font-mono h-8"
-                        >
-                            <option value="">All Classes</option>
-                            {Object.entries(lookups.classes).map(([id, name]) => (
-                                <option key={id} value={id}>{name}</option>
-                            ))}
-                        </select>
-
-                        {/* Clear filters */}
+                        {/* Clear */}
                         {(localFilters.search || localFilters.company || localFilters.department || localFilters.status || localFilters.class) && (
                             <button
                                 onClick={() => {
-                                    const cleared = { search: "", company: "", department: "", status: "", class: "" };
+                                    const cleared = { search: "", company: "", department: "", status: "", class: "", per_page: localFilters.per_page };
                                     setLocalFilters(cleared);
-                                    router.get(route("employees.index"), { page: 1 }, { preserveScroll: true, replace: true });
+                                    router.get(route("employees.index"), { filters: encodeFilters({ ...cleared, page: 1 }) }, { preserveScroll: true, replace: true });
                                 }}
-                                className="text-[12px] text-muted-foreground/60 hover:text-muted-foreground underline underline-offset-2"
+                                className="shrink-0 text-[12px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
                             >
-                                Clear filters
+                                × Clear
                             </button>
                         )}
                     </div>
@@ -160,11 +131,27 @@ export default function EmployeeIndex({ employees, filters, lookups }) {
                     <EmployeeTable data={employees.data} />
 
                     {/* ── Pagination ── */}
-                    {last_page > 1 && (
-                        <div className="mt-4 flex items-center justify-between">
+                    <div className="mt-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
                             <p className="text-[12px] text-muted-foreground/60 font-mono">
                                 Showing {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}
                             </p>
+                            <select
+                                value={localFilters.per_page}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setLocalFilters((f) => ({ ...f, per_page: val }));
+                                    applyFilters({ per_page: val });
+                                }}
+                                className="rounded-md border border-input bg-background px-2 py-1 text-[12px] font-mono h-7"
+                            >
+                                {[10, 25, 50, 100].map((n) => (
+                                    <option key={n} value={n}>{n} / page</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {last_page > 1 && (
                             <div className="flex items-center gap-1">
                                 <Button
                                     variant="ghost"
@@ -204,8 +191,8 @@ export default function EmployeeIndex({ employees, filters, lookups }) {
                                     <ChevronRight className="size-3.5" />
                                 </Button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -23,7 +23,18 @@ class EmployeeController extends Controller
 
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'company', 'department', 'status', 'class', 'page', 'per_page']);
+        $encoded = $request->query('filters', '');
+        $decoded = [];
+        if ($encoded) {
+            $json    = base64_decode($encoded, strict: true);
+            $decoded = ($json !== false) ? (json_decode($json, associative: true) ?? []) : [];
+        }
+
+        $filters = array_intersect_key(
+            array_map('strval', $decoded),
+            array_flip(['search', 'company', 'department', 'status', 'class', 'page', 'per_page'])
+        );
+
         $result  = $this->employeeService->getEmployeeListForTable($filters);
 
         return Inertia::render('Employee/Index', [
@@ -38,8 +49,11 @@ class EmployeeController extends Controller
         ]);
     }
 
-    public function show(int $employid, Request $request): Response
+    public function show(string $employid, Request $request): Response
     {
+        $decoded   = base64_decode($employid, strict: true);
+        $employid  = ($decoded !== false && ctype_digit($decoded)) ? (int) $decoded : 0;
+
         $result = $this->employeeService->getFullDetail($employid);
 
         if (!$result['success']) {
@@ -56,13 +70,19 @@ class EmployeeController extends Controller
             ),
 
             // Loaded on demand when the employee combobox is opened
-            'activeEmployees' => Inertia::lazy(fn () =>
-                $this->employeeService->getActiveEmployeeList([
-                    'search'   => $request->input('search', ''),
-                    'page'     => $request->integer('page', 1),
-                    'per_page' => $request->integer('per_page', 50),
-                ])
-            ),
+            'activeEmployees' => Inertia::lazy(function () use ($request) {
+                $encoded = $request->query('q', '');
+                $params  = [];
+                if ($encoded) {
+                    $json   = base64_decode($encoded, strict: true);
+                    $params = ($json !== false) ? (json_decode($json, associative: true) ?? []) : [];
+                }
+                return $this->employeeService->getActiveEmployeeList([
+                    'search'   => $params['search']   ?? '',
+                    'page'     => (int) ($params['page']     ?? 1),
+                    'per_page' => (int) ($params['per_page'] ?? 50),
+                ]);
+            }),
         ]);
     }
 }
