@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -14,6 +15,7 @@ const Field = ({ label, children }) => (
     </div>
 );
 
+// Used for fields with ≤5 options (no search needed)
 const Select = ({ value, onChange, options, placeholder = "Select..." }) => (
     <select
         value={value ?? ""}
@@ -29,6 +31,18 @@ const Select = ({ value, onChange, options, placeholder = "Select..." }) => (
             </option>
         ))}
     </select>
+);
+
+// Used for fields with >5 options — searchable combobox
+const SearchSelect = ({ value, onChange, options, placeholder = "Select..." }) => (
+    <Combobox
+        options={options}
+        value={value ?? ""}
+        onChange={(v) => onChange(v ?? "")}
+        placeholder={placeholder}
+        clearable={false}
+        allowCustomValue
+    />
 );
 
 // ─── NameForm ─────────────────────────────────────────────────────────────────
@@ -60,7 +74,7 @@ export function NameForm({ value, onChange }) {
     );
 }
 
-// ─── CivilStatusForm ──────────────────────────────────────────────────────────
+// ─── CivilStatusForm — 5 options, plain Select ────────────────────────────────
 
 const CIVIL_STATUS_OPTIONS = [
     "Single",
@@ -156,7 +170,7 @@ export function AddressForm({ value, onChange }) {
     );
 }
 
-// ─── EducationForm ────────────────────────────────────────────────────────────
+// ─── EducationForm — 7 options, searchable ────────────────────────────────────
 
 const EDUCATION_OPTIONS = [
     "Elementary Graduate",
@@ -166,12 +180,12 @@ const EDUCATION_OPTIONS = [
     "College Level",
     "College Graduate",
     "Post Graduate",
-];
+].map((v) => ({ value: v, label: v }));
 
 export function EducationForm({ value, onChange }) {
     return (
         <Field label="Educational Attainment">
-            <Select
+            <SearchSelect
                 value={value.educational_attainment}
                 onChange={(v) => onChange({ educational_attainment: v })}
                 options={EDUCATION_OPTIONS}
@@ -225,6 +239,7 @@ export function ParentForm({ value, onChange, gender }) {
 
 // ─── FamilyTableForm (Children & Siblings) ────────────────────────────────────
 
+// 2 options — plain Select
 const GENDER_OPTIONS = ["Male", "Female"];
 
 // config: { nameKey, bdayKey, ageKey, genderKey, rowLabel }
@@ -347,8 +362,13 @@ export function SpouseForm({ value = [], onChange }) {
 
 // ─── OthersForm ───────────────────────────────────────────────────────────────
 
-const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
-const RELIGION_OPTS = [
+// 8 options — searchable
+const BLOOD_TYPE_OPTIONS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
+    (v) => ({ value: v, label: v }),
+);
+
+// 7 options — searchable
+const RELIGION_OPTIONS = [
     "Roman Catholic",
     "Islam",
     "Iglesia ni Cristo",
@@ -356,10 +376,15 @@ const RELIGION_OPTS = [
     "Baptist",
     "Seventh Day Adventist",
     "Others",
-];
+].map((v) => ({ value: v, label: v }));
 
-export function OthersForm({ value, onChange }) {
+export function OthersForm({ value, onChange, shuttles = [] }) {
     const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
+
+    const shuttleOptions = shuttles.map((s) => ({
+        value: s.id,
+        label: s.shuttle_name,
+    }));
 
     return (
         <div className="grid grid-cols-2 gap-3">
@@ -385,17 +410,17 @@ export function OthersForm({ value, onChange }) {
                 </Field>
             </div>
             <Field label="Religion">
-                <Select
+                <SearchSelect
                     value={value.religion}
                     onChange={(v) => onChange({ ...value, religion: v })}
-                    options={RELIGION_OPTS}
+                    options={RELIGION_OPTIONS}
                 />
             </Field>
             <Field label="Blood Type">
-                <Select
+                <SearchSelect
                     value={value.blood_type}
                     onChange={(v) => onChange({ ...value, blood_type: v })}
-                    options={BLOOD_TYPES}
+                    options={BLOOD_TYPE_OPTIONS}
                 />
             </Field>
             <Field label="Height (cm)">
@@ -412,6 +437,23 @@ export function OthersForm({ value, onChange }) {
                     onChange={set("weight")}
                 />
             </Field>
+            <div className="col-span-2">
+                <Field label="Shuttle">
+                    <Combobox
+                        options={shuttleOptions}
+                        value={value.shuttle_id ?? ""}
+                        onChange={(v) =>
+                            onChange({
+                                ...value,
+                                shuttle_id: v != null && v !== "" ? Number(v) : null,
+                            })
+                        }
+                        placeholder="No shuttle assigned"
+                        clearable
+                        allowCustomValue={false}
+                    />
+                </Field>
+            </div>
         </div>
     );
 }

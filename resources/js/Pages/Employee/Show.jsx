@@ -1,9 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef, memo } from "react";
 import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
-import { memo } from "react";
 
 import EditSectionDropdown from "@/Components/ChangeRequest/EditSectionDropdown";
 import ChangeRequestModal from "@/Components/ChangeRequest/ChangeRequestModal";
@@ -27,6 +26,7 @@ import {
     TabBtn,
     ApproverCard,
 } from "@/Components/Employee/EmployeeComponents";
+import FilesTab from "@/Components/Employee/FilesTab";
 
 const EmployeeCombobox = memo(Combobox);
 
@@ -116,6 +116,7 @@ function buildOldValue(category, employee) {
                 blood_type: employee.blood_type,
                 height: employee.height,
                 weight: employee.weight,
+                shuttle_id: employee.shuttle_id ?? null,
             };
         default:
             return {};
@@ -124,69 +125,106 @@ function buildOldValue(category, employee) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export default function EmployeeShow({
-    employee,
-    activeEmployees = [],
-    changeRequests = {},
-}) {
-    const [tab, setTab] = useState("personal");
-    const [modalCategory, setModalCategory] = useState(null); // which modal is open
-    const [formValue, setFormValue] = useState(null); // controlled form state
-    console.log(employee);
+const SEX_LABELS = { 1: "Male", 2: "Female", "1": "Male", "2": "Female" };
 
-    // changeRequests is a map: { name: {...}, civil_status: null, ... }
-    // passed from controller via getPendingMapForEmployee()
+export default function EmployeeShow({ employee, shuttles = [], changeRequests = {}, attachments }) {
+    const [tab, setTab] = useState("personal");
+    const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+    const attachmentsFetched = useRef(false);
+    const [modalCategory, setModalCategory] = useState(null);
+    const [formValue, setFormValue] = useState(null);
+    const [oldValueSnapshot, setOldValueSnapshot] = useState(null);
     const [pendingMap, setPendingMap] = useState(changeRequests);
 
-    const pal = avatarPalette(employee.emp_id);
-    const loadOptions = async (search, page) => {
-        const response = await axios.get(route("employees.options"), {
-            params: { search, page, per_page: 50 },
-        });
-        return {
-            options: response.data.data.map((emp) => ({
-                value: emp.employid,
-                label: `${emp.employid} — ${emp.emp_name}`,
-            })),
-            hasMore: response.data.current_page < response.data.last_page,
-        };
-    };
+    // Stable across renders — emp_id never changes for a given page
+    const pal = useMemo(() => avatarPalette(employee.emp_id), [employee.emp_id]);
 
-    const employeeOptions = useMemo(
-        () =>
-            (activeEmployees.data || activeEmployees).map((emp) => ({
-                value: emp.employid,
-                label: `${emp.employid} — ${emp.emp_name}`,
-            })),
-        [activeEmployees],
+    // Stable reference — router is stable, no deps needed
+    const loadOptions = useCallback(
+        (search, page) =>
+            new Promise((resolve) => {
+                router.reload({
+                    only: ["activeEmployees"],
+                    data: { search, page, per_page: 50 },
+                    onSuccess: (pg) => {
+                        const result = pg.props.activeEmployees;
+                        resolve({
+                            options: (result?.data ?? result ?? []).map(
+                                (emp) => ({
+                                    value: emp.employid,
+                                    label: `${emp.employid} — ${emp.emp_name}`,
+                                }),
+                            ),
+                            hasMore:
+                                (result?.current_page ?? 1) <
+                                (result?.last_page ?? 1),
+                        });
+                    },
+                    onError: () => resolve({ options: [], hasMore: false }),
+                });
+            }),
+        [],
     );
 
-    const handleEmployeeChange = (employid) => {
-        if (!employid || employid === employee.emp_id) return;
-        router.visit(route("employees.show", { employid }), {
-            preserveScroll: false,
-        });
-    };
+    // Seed the combobox with just the current employee so the label shows
+    // immediately; the full list is fetched lazily via loadOptions on open.
+    const employeeOptions = useMemo(
+        () => [
+            {
+                value: employee.emp_id,
+                label: `${employee.emp_id} — ${employee.emp_name}`,
+            },
+        ],
+        [employee.emp_id, employee.emp_name],
+    );
 
-    // Open modal — initialize form value from current employee data
-    const openModal = (category) => {
-        setFormValue(buildOldValue(category, employee));
-        setModalCategory(category);
-    };
+    const handleEmployeeChange = useCallback(
+        (employid) => {
+            if (!employid || employid === employee.emp_id) return;
+            router.visit(route("employees.show", { employid }), {
+                preserveScroll: false,
+            });
+        },
+        [employee.emp_id],
+    );
 
-    const closeModal = () => {
+    // Snapshot old value once on open so buildOldValue isn't called every render
+    const openModal = useCallback(
+        (category) => {
+            const snapshot = buildOldValue(category, employee);
+            setOldValueSnapshot(snapshot);
+            setFormValue(snapshot);
+            setModalCategory(category);
+        },
+        [employee],
+    );
+
+    const closeModal = useCallback(() => {
         setModalCategory(null);
         setFormValue(null);
-    };
+        setOldValueSnapshot(null);
+    }, []);
 
-    const handleSuccess = (newRequest) => {
+    const handleSuccess = useCallback((newRequest) => {
         setPendingMap((prev) => ({
             ...prev,
             [newRequest.category]: newRequest,
         }));
-    };
+    }, []);
 
-    // Render the correct form inside the modal
+    // Lazy-load attachments the first time the Files tab is opened
+    const handleTabChange = useCallback((newTab) => {
+        setTab(newTab);
+        if (newTab === "files" && !attachmentsFetched.current) {
+            attachmentsFetched.current = true;
+            setAttachmentsLoading(true);
+            router.reload({
+                only: ["attachments"],
+                onFinish: () => setAttachmentsLoading(false),
+            });
+        }
+    }, []);
+
     const renderForm = () => {
         if (!modalCategory || formValue === null) return null;
 
@@ -255,7 +293,7 @@ export default function EmployeeShow({
                     />
                 );
             case "others":
-                return <OthersForm value={formValue} onChange={setFormValue} />;
+                return <OthersForm value={formValue} onChange={setFormValue} shuttles={shuttles} />;
             default:
                 return null;
         }
@@ -311,7 +349,6 @@ export default function EmployeeShow({
                                 <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none">
                                     {employee.emp_name}
                                 </h1>
-                                {/* ← Edit Section Dropdown */}
                                 <EditSectionDropdown
                                     onSelect={openModal}
                                     pendingMap={pendingMap}
@@ -352,15 +389,21 @@ export default function EmployeeShow({
                     <div className="border-b border-border/50 flex gap-5 mb-2">
                         <TabBtn
                             active={tab === "personal"}
-                            onClick={() => setTab("personal")}
+                            onClick={() => handleTabChange("personal")}
                         >
                             Personal
                         </TabBtn>
                         <TabBtn
                             active={tab === "work"}
-                            onClick={() => setTab("work")}
+                            onClick={() => handleTabChange("work")}
                         >
                             Work
+                        </TabBtn>
+                        <TabBtn
+                            active={tab === "files"}
+                            onClick={() => handleTabChange("files")}
+                        >
+                            Files
                         </TabBtn>
                     </div>
 
@@ -399,7 +442,10 @@ export default function EmployeeShow({
                                     label="Place of Birth"
                                     value={employee.place_of_birth}
                                 />
-                                <Field label="Sex" value={employee.emp_sex} />
+                                <Field
+                                    label="Sex"
+                                    value={SEX_LABELS[employee.emp_sex] ?? employee.emp_sex}
+                                />
                                 <Field
                                     label="Civil Status"
                                     value={employee.civil_status}
@@ -422,6 +468,10 @@ export default function EmployeeShow({
                                 <Field
                                     label="Education"
                                     value={employee.educational_attainment}
+                                />
+                                <Field
+                                    label="Shuttle"
+                                    value={employee.shuttle}
                                 />
                             </div>
 
@@ -654,17 +704,24 @@ export default function EmployeeShow({
                             )}
                         </>
                     )}
+                    {/* ══ FILES TAB ══ */}
+                    {tab === "files" && (
+                        <FilesTab
+                            attachments={attachments}
+                            loading={attachmentsLoading}
+                        />
+                    )}
                 </div>
             </div>
 
             {/* ── Change Request Modal ── */}
             {modalCategory && (
                 <ChangeRequestModal
-                    open={!!modalCategory}
+                    open
                     onClose={closeModal}
                     employid={employee.emp_id}
                     category={modalCategory}
-                    oldValue={buildOldValue(modalCategory, employee)}
+                    oldValue={oldValueSnapshot}
                     newValue={formValue}
                     existingRequest={pendingMap[modalCategory]}
                     onSuccess={handleSuccess}

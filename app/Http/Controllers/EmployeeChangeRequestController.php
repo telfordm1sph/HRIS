@@ -96,8 +96,8 @@ class EmployeeChangeRequestController extends Controller
     public function approve(int $id, Request $request): JsonResponse
     {
         // Get HR user from session (adjust based on your session structure)
-        $hrData = session('empdata'); // or session('hrdata')
-        $reviewerId = $hrData['employid'] ?? null;
+        $hrData = session('emp_data'); // or session('hrdata')
+        $reviewerId = $hrData['emp_id'] ?? null;
 
         try {
             $changeRequest = $this->service->approve($id, $reviewerId);
@@ -121,8 +121,8 @@ class EmployeeChangeRequestController extends Controller
         ]);
 
         // Get HR user from session (adjust based on your session structure)
-        $hrData = session('empdata'); // or session('hrdata')
-        $reviewerId = $hrData['employid'] ?? null;
+        $hrData = session('emp_data'); // or session('hrdata')
+        $reviewerId = $hrData['emp_id'] ?? null;
 
         try {
             $changeRequest = $this->service->reject($id, $validated['remarks'], $reviewerId);

@@ -78,6 +78,11 @@ class EmployeeWorkDetail extends Model
         return $this->belongsTo(EmployeeShift::class, 'shift_type');
     }
 
+    public function shuttleRel()
+    {
+        return $this->belongsTo(Shuttle::class, 'shuttle');
+    }
+
     // Update this relationship to include the detail relationships
     public function approver()
     {

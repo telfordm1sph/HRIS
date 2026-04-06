@@ -18,6 +18,7 @@ class EmployeeRepository
             'workDetail.statusRel',
             'workDetail.classRel',
             'workDetail.shiftRel',
+            'workDetail.shuttleRel',
             'workDetail.govInfo',
             'workDetail.approver.approver1Detail',
             'workDetail.approver.approver2Detail',

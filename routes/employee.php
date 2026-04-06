@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\EmployeeChangeRequestController;
 use App\Http\Controllers\EmployeeController;
 use Illuminate\Support\Facades\Route;
@@ -9,8 +10,11 @@ $app_name = env('APP_NAME', '');
 Route::prefix($app_name)->group(function () {
     Route::get('/employees/{employid}', [EmployeeController::class, 'show'])
         ->name('employees.show');
-    Route::get('/api/employees/options', [EmployeeController::class, 'getEmployeeOptions'])
-        ->name('employees.options');
+
+    // ── File serving — web stack so session/cookie auth works in browser ─────
+    Route::get('/attachments/{id}', [AttachmentController::class, 'view'])
+        ->middleware('throttle:api-reads')
+        ->name('attachments.view');
 
 
     // ── HR Table Page (Inertia) ───────────────────────────────────────────────
@@ -19,13 +23,16 @@ Route::prefix($app_name)->group(function () {
 
     // ── Employee Submit ───────────────────────────────────────────────────────
     Route::post('/change-requests', [EmployeeChangeRequestController::class, 'store'])
+        ->middleware('throttle:cr-submit')
         ->name('change-requests.store');
 
     // ── HR Approve / Reject ───────────────────────────────────────────────────
     Route::post('/change-requests/{id}/approve', [EmployeeChangeRequestController::class, 'approve'])
+        ->middleware('throttle:cr-review')
         ->name('change-requests.approve');
 
     Route::post('/change-requests/{id}/reject', [EmployeeChangeRequestController::class, 'reject'])
+        ->middleware('throttle:cr-review')
         ->name('change-requests.reject');
 
     // ── Attachments ───────────────────────────────────────────────────────────
@@ -33,5 +40,6 @@ Route::prefix($app_name)->group(function () {
         ->name('change-requests.attachments.index');
 
     Route::post('/change-requests/attachments', [EmployeeChangeRequestController::class, 'uploadAttachment'])
+        ->middleware('throttle:cr-upload')
         ->name('change-requests.attachments.store');
 });

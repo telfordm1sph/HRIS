@@ -108,6 +108,8 @@ class EmployeeService
                 'emp_class'        => $work->classRel->class_name  ?? null,
                 'shift_type_id'    => $work->shift_type   ?? null,
                 'shift_type'       => $work->shiftRel->shift_name  ?? null,
+                'shuttle_id'       => $work->shuttle      ?? null,
+                'shuttle'          => $work->shuttleRel->shuttle_name ?? null,
                 'date_hired'       => $work->date_hired   ?? null,
                 'date_reg'         => $work->date_reg     ?? null,
                 'service_length'   => $work->service_length ?? null,
