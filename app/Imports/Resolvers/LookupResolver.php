@@ -11,6 +11,7 @@ use App\Models\JobTitle;
 use App\Models\ProdLine;
 use App\Models\Shuttle;
 use App\Models\Station;
+use App\Models\Team;
 
 class LookupResolver
 {
@@ -27,6 +28,7 @@ class LookupResolver
         $this->maps['shift_type']  = EmployeeShift::pluck('id', 'shift_name')->map(fn($id) => (int) $id)->toArray();
         $this->maps['shuttle']     = Shuttle::pluck('id', 'shuttle_name')->map(fn($id) => (int) $id)->toArray();
         $this->maps['empposition'] = EmployeePosition::pluck('id', 'emp_position_name')->map(fn($id) => (int) $id)->toArray();
+        $this->maps['team']        = Team::pluck('id', 'team_name')->map(fn($id) => (int) $id)->toArray();
     }
 
     /**

@@ -62,6 +62,10 @@ class EmployeeWorkDetail extends Model
     {
         return $this->belongsTo(Station::class, 'station');
     }
+    public function teamRel()
+    {
+        return $this->belongsTo(Team::class, 'team');
+    }
 
     public function statusRel()
     {

@@ -26,7 +26,7 @@ class WorkDetailsSheet implements WithTitle, WithHeadings, FromArray, WithColumn
         'D' => ['Production Line',           'prodlines'],
         'E' => ['Job Title',                 'job_titles'],
         'F' => ['Station',                   'stations'],
-        'G' => ['Team',                      null],
+        'G' => ['Team',                      'teams'],
         'H' => ['Employment Status',         'statuses'],
         'I' => ['Employment Class',          'classes'],
         'J' => ['Shift Type',                'shifts'],

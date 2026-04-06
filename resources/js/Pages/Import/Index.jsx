@@ -1,121 +1,37 @@
-import { useRef, useState } from "react";
-import { Head, router, usePage } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Button } from "@/components/ui/button";
+import SheetSummary from "@/Components/Import/SheetSummary";
+import ErrorTable from "@/Components/Import/ErrorTable";
+import { useImport } from "@/Hooks/useImport";
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-function SheetSummary({ label, result }) {
-    if (!result) return null;
-    return (
-        <div className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
-            <span className="text-[13px] text-foreground/80">{label}</span>
-            <div className="flex gap-4 text-[12px] font-mono">
-                <span className="text-green-600 dark:text-green-400">
-                    {result.processed} processed
-                </span>
-                {result.skipped > 0 && (
-                    <span className="text-amber-600 dark:text-amber-400">
-                        {result.skipped} skipped
-                    </span>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function ErrorTable({ errors }) {
-    if (!errors?.length) return null;
-    return (
-        <div className="mt-4">
-            <p className="text-[12px] font-semibold text-red-600 dark:text-red-400 mb-2">
-                {errors.length} error{errors.length !== 1 ? "s" : ""} found
-            </p>
-            <div className="rounded-lg border border-red-200 dark:border-red-900 overflow-hidden">
-                <table className="w-full text-[12px]">
-                    <thead>
-                        <tr className="bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-900">
-                            {["Sheet", "Row", "Field", "Issue"].map((h) => (
-                                <th
-                                    key={h}
-                                    className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 font-mono"
-                                >
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-red-100 dark:divide-red-900/40">
-                        {errors.map((e, i) => (
-                            <tr
-                                key={i}
-                                className="bg-background hover:bg-red-50/50 dark:hover:bg-red-950/20"
-                            >
-                                <td className="px-3 py-2 font-mono text-muted-foreground">
-                                    {e.sheet}
-                                </td>
-                                <td className="px-3 py-2 font-mono text-muted-foreground">
-                                    {e.row}
-                                </td>
-                                <td className="px-3 py-2 text-foreground/70">
-                                    {e.field}
-                                </td>
-                                <td className="px-3 py-2 text-red-700 dark:text-red-400">
-                                    {e.message}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
+const SHEET_DESCRIPTIONS = [
+    ["Sheet 1", "Employee Details — personal info, static dropdowns"],
+    ["Sheet 2", "Work Details — department, shift, etc. (live dropdowns)"],
+    ["Sheet 3", "Address — current & permanent"],
+    ["Sheet 4", "Government Info — TIN, SSS, PhilHealth, Pag-IBIG"],
+    ["Sheet 5", "Approver — approver 1, 2, 3 (by employee ID)"],
+    ["Sheet 6", "Parents — one row per parent"],
+    ["Sheet 7", "Spouse — one row per spouse"],
+    ["Sheet 8", "Children — one row per child"],
+    ["Sheet 9", "Siblings — one row per sibling"],
+];
 
 export default function ImportIndex() {
     const { props } = usePage();
     const result = props.flash?.import_result ?? null;
 
-    const fileInputRef = useRef(null);
-    const [file, setFile] = useState(null);
-    const [dragging, setDragging] = useState(false);
-    const [uploading, setUploading] = useState(false);
-
-    const handleFile = (f) => {
-        if (f && (f.name.endsWith(".xlsx") || f.name.endsWith(".xls"))) {
-            setFile(f);
-        }
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setDragging(false);
-        handleFile(e.dataTransfer.files[0]);
-    };
-
-    const handleSubmit = () => {
-        if (!file) return;
-        setUploading(true);
-
-        const data = new FormData();
-        data.append("file", file);
-
-        router.post(route("import.upload"), data, {
-            forceFormData: true,
-            preserveScroll: true,
-            onFinish: () => {
-                setUploading(false);
-                setFile(null);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-            },
-        });
-    };
-
-    const totalProcessed = result
-        ? Object.values(result.sheets).reduce((s, r) => s + r.processed, 0)
-        : 0;
+    const {
+        fileInputRef,
+        file,
+        dragging,
+        setDragging,
+        uploading,
+        handleFile,
+        handleDrop,
+        handleSubmit,
+        totalProcessed,
+    } = useImport(result);
 
     return (
         <AuthenticatedLayout>
@@ -143,7 +59,7 @@ export default function ImportIndex() {
                                     Step 1 — Download the template
                                 </p>
                                 <p className="text-[12px] text-muted-foreground mt-1">
-                                    The template includes all 4 sheets with live
+                                    The template includes all sheets with live
                                     dropdowns populated from the current lookup
                                     tables.
                                 </p>
@@ -159,12 +75,7 @@ export default function ImportIndex() {
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-2 text-[11.5px] text-muted-foreground/70">
-                            {[
-                                ["Sheet 1", "Employee Details — personal info, static dropdowns"],
-                                ["Sheet 2", "Work Details — department, shift, etc. (live dropdowns)"],
-                                ["Sheet 3", "Address — current & permanent"],
-                                ["Sheet 4", "Government Info — TIN, SSS, PhilHealth, Pag-IBIG"],
-                            ].map(([sheet, desc]) => (
+                            {SHEET_DESCRIPTIONS.map(([sheet, desc]) => (
                                 <div key={sheet} className="flex gap-2">
                                     <span className="font-mono font-semibold text-foreground/50 w-16 shrink-0">{sheet}</span>
                                     <span>{desc}</span>

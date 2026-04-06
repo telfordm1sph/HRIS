@@ -22,6 +22,7 @@ class LookupsSheet implements WithTitle, WithEvents
         'G' => ['key' => 'shifts',      'header' => 'Shift Type'],
         'H' => ['key' => 'shuttles',    'header' => 'Shuttle'],
         'I' => ['key' => 'positions',   'header' => 'Position'],
+        'J' => ['key' => 'teams',       'header' => 'Team'],
     ];
 
     public function __construct(private readonly array $lookups) {}

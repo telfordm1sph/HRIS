@@ -3,9 +3,14 @@
 namespace App\Exports;
 
 use App\Exports\Sheets\AddressSheet;
+use App\Exports\Sheets\ApproverSheet;
+use App\Exports\Sheets\ChildrenSheet;
 use App\Exports\Sheets\EmployeeDetailsSheet;
 use App\Exports\Sheets\GovInfoSheet;
 use App\Exports\Sheets\LookupsSheet;
+use App\Exports\Sheets\ParentsSheet;
+use App\Exports\Sheets\SiblingsSheet;
+use App\Exports\Sheets\SpouseSheet;
 use App\Exports\Sheets\WorkDetailsSheet;
 use App\Models\EmployeeClass;
 use App\Models\EmployeeDepartment;
@@ -16,6 +21,7 @@ use App\Models\JobTitle;
 use App\Models\ProdLine;
 use App\Models\Shuttle;
 use App\Models\Station;
+use App\Models\Team;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class EmployeeImportTemplate implements WithMultipleSheets
@@ -34,6 +40,7 @@ class EmployeeImportTemplate implements WithMultipleSheets
             'shifts'      => EmployeeShift::pluck('shift_name')->toArray(),
             'shuttles'    => Shuttle::pluck('shuttle_name')->toArray(),
             'positions'   => EmployeePosition::pluck('emp_position_name')->toArray(),
+            'teams'       => Team::pluck('team_name')->toArray(),
         ];
     }
 
@@ -45,6 +52,11 @@ class EmployeeImportTemplate implements WithMultipleSheets
             new WorkDetailsSheet($this->lookups),  // index 2
             new AddressSheet(),                    // index 3
             new GovInfoSheet(),                    // index 4
+            new ApproverSheet(),                   // index 5
+            new ParentsSheet(),                    // index 6
+            new SpouseSheet(),                     // index 7
+            new ChildrenSheet(),                   // index 8
+            new SiblingsSheet(),                   // index 9
         ];
     }
 }

@@ -1,48 +1,14 @@
-import { useState } from "react";
-import { Head, router, usePage } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Input } from "@/components/ui/input";
 import StatusBadge from "@/Components/ChangeRequest/StatusBadge";
 import DiffCell from "@/Components/ChangeRequest/DiffCell";
 import ActionCell from "@/Components/ChangeRequest/ActionCell";
+import { useChangeRequests } from "@/Hooks/useChangeRequests";
 
 export default function ChangeRequestsIndex({ requests, filters, categories }) {
-    const { errors } = usePage().props;
-    const [localFilters, setLocalFilters] = useState(filters);
-
-    const applyFilters = (overrides = {}) => {
-        router.get(
-            route("change-requests.index"),
-            { ...localFilters, ...overrides, page: 1 },
-            { preserveScroll: true, replace: true }
-        );
-    };
-
-    const handleApprove = (id, onFinish) => {
-        router.post(
-            route("change-requests.approve", { id }),
-            {},
-            {
-                preserveScroll: true,
-                only: ["requests"],
-                onError: () => toast.error(errors.message ?? "Failed to approve."),
-                onFinish,
-            }
-        );
-    };
-
-    const handleReject = (id, remarks, onFinish) => {
-        router.post(
-            route("change-requests.reject", { id }),
-            { remarks },
-            {
-                preserveScroll: true,
-                only: ["requests"],
-                onError: () => toast.error(errors.message ?? "Failed to reject."),
-                onFinish,
-            }
-        );
-    };
+    const { localFilters, setLocalFilters, applyFilters, handleApprove, handleReject } =
+        useChangeRequests(filters);
 
     return (
         <AuthenticatedLayout>

@@ -44,6 +44,7 @@ class WorkDetailsImportSheet implements ToCollection, WithStartRow
             $prodline    = $this->resolver->resolveOrError('prodline',    $row[3],  $rowNum, 'Production Line',   $rowErrors);
             $jobTitle    = $this->resolver->resolveOrError('job_title',   $row[4],  $rowNum, 'Job Title',         $rowErrors);
             $station     = $this->resolver->resolveOrError('station',     $row[5],  $rowNum, 'Station',           $rowErrors);
+            $team        = $this->resolver->resolveOrError('team',        $row[6],  $rowNum, 'Team',              $rowErrors);
             $empstatus   = $this->resolver->resolveOrError('empstatus',   $row[7],  $rowNum, 'Employment Status', $rowErrors);
             $empclass    = $this->resolver->resolveOrError('empclass',    $row[8],  $rowNum, 'Employment Class',  $rowErrors);
             $shiftType   = $this->resolver->resolveOrError('shift_type',  $row[9],  $rowNum, 'Shift Type',        $rowErrors);
@@ -68,7 +69,7 @@ class WorkDetailsImportSheet implements ToCollection, WithStartRow
                         'prodline'   => $prodline,
                         'job_title'  => $jobTitle,
                         'station'    => $station,
-                        'team'       => trim((string) ($row[6] ?? '')),
+                        'team'       => $team,
                         'empstatus'  => $empstatus,
                         'empclass'   => $empclass,
                         'shift_type' => $shiftType,

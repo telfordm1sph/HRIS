@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, memo } from "react";
+import { memo } from "react";
 import { Head, router } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,6 @@ import {
     OthersForm,
 } from "@/Components/ChangeRequest/Forms/CategoryForms";
 
-import { initials, avatarPalette } from "@/Helpers/employee";
 import {
     Field,
     SectionDivider,
@@ -27,8 +26,11 @@ import {
     ApproverCard,
 } from "@/Components/Employee/EmployeeComponents";
 import FilesTab from "@/Components/Employee/FilesTab";
+import { useEmployeeShow } from "@/Hooks/useEmployeeShow";
 
 const EmployeeCombobox = memo(Combobox);
+
+const SEX_LABELS = { 1: "Male", 2: "Female" };
 
 // ─── Pending badge shown under a section title ────────────────────────────────
 
@@ -55,175 +57,31 @@ function PendingBadge({ request }) {
     return null;
 }
 
-// ─── Build old_value snapshot per category from employee prop ─────────────────
-
-function buildOldValue(category, employee) {
-    switch (category) {
-        case "name":
-            return {
-                firstname: employee.emp_firstname,
-                middlename: employee.emp_middlename,
-                lastname: employee.emp_lastname,
-            };
-        case "civil_status":
-            return { civil_status: employee.civil_status };
-        case "education":
-            return { educational_attainment: employee.educational_attainment };
-        case "address":
-            return {
-                house_no: employee.address?.house_no ?? "",
-                brgy: employee.address?.brgy ?? "",
-                city: employee.address?.city ?? "",
-                province: employee.address?.province ?? "",
-                perma_house_no: employee.address?.perma_house_no ?? "",
-                perma_brgy: employee.address?.perma_brgy ?? "",
-                perma_city: employee.address?.perma_city ?? "",
-                perma_province: employee.address?.perma_province ?? "",
-            };
-        case "father": {
-            const f =
-                employee.parent?.find((p) => p.parent_gender === "Male") ?? {};
-            return {
-                parent_name: f.parent_name ?? "",
-                parent_bday: f.parent_bday ?? "",
-                parent_age: f.parent_age ?? "",
-                parent_gender: "Male",
-            };
-        }
-        case "mother": {
-            const m =
-                employee.parent?.find((p) => p.parent_gender === "Female") ??
-                {};
-            return {
-                parent_name: m.parent_name ?? "",
-                parent_bday: m.parent_bday ?? "",
-                parent_age: m.parent_age ?? "",
-                parent_gender: "Female",
-            };
-        }
-        case "spouse":
-            return employee.spouse ?? [];
-        case "children":
-            return employee.children ?? [];
-        case "siblings":
-            return employee.siblings ?? [];
-        case "others":
-            return {
-                nickname: employee.nickname,
-                email: employee.email,
-                contact_no: employee.contact_no,
-                religion: employee.religion,
-                blood_type: employee.blood_type,
-                height: employee.height,
-                weight: employee.weight,
-                shuttle_id: employee.shuttle_id ?? null,
-            };
-        default:
-            return {};
-    }
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-const SEX_LABELS = { 1: "Male", 2: "Female", "1": "Male", "2": "Female" };
-
-export default function EmployeeShow({ employee, shuttles = [], changeRequests = {}, attachments }) {
-    const [tab, setTab] = useState("personal");
-    const [attachmentsLoading, setAttachmentsLoading] = useState(false);
-    const attachmentsFetched = useRef(false);
-    const [modalCategory, setModalCategory] = useState(null);
-    const [formValue, setFormValue] = useState(null);
-    const [oldValueSnapshot, setOldValueSnapshot] = useState(null);
-    const [pendingMap, setPendingMap] = useState(changeRequests);
-
-    // Stable across renders — emp_id never changes for a given page
-    const pal = useMemo(() => avatarPalette(employee.emp_id), [employee.emp_id]);
-
-    // Stable reference — router is stable, no deps needed
-    const loadOptions = useCallback(
-        (search, page) =>
-            new Promise((resolve) => {
-                router.reload({
-                    only: ["activeEmployees"],
-                    data: { search, page, per_page: 50 },
-                    onSuccess: (pg) => {
-                        const result = pg.props.activeEmployees;
-                        resolve({
-                            options: (result?.data ?? result ?? []).map(
-                                (emp) => ({
-                                    value: emp.employid,
-                                    label: `${emp.employid} — ${emp.emp_name}`,
-                                }),
-                            ),
-                            hasMore:
-                                (result?.current_page ?? 1) <
-                                (result?.last_page ?? 1),
-                        });
-                    },
-                    onError: () => resolve({ options: [], hasMore: false }),
-                });
-            }),
-        [],
-    );
-
-    // Seed the combobox with just the current employee so the label shows
-    // immediately; the full list is fetched lazily via loadOptions on open.
-    const employeeOptions = useMemo(
-        () => [
-            {
-                value: employee.emp_id,
-                label: `${employee.emp_id} — ${employee.emp_name}`,
-            },
-        ],
-        [employee.emp_id, employee.emp_name],
-    );
-
-    const handleEmployeeChange = useCallback(
-        (employid) => {
-            if (!employid || employid === employee.emp_id) return;
-            router.visit(route("employees.show", { employid }), {
-                preserveScroll: false,
-            });
-        },
-        [employee.emp_id],
-    );
-
-    // Snapshot old value once on open so buildOldValue isn't called every render
-    const openModal = useCallback(
-        (category) => {
-            const snapshot = buildOldValue(category, employee);
-            setOldValueSnapshot(snapshot);
-            setFormValue(snapshot);
-            setModalCategory(category);
-        },
-        [employee],
-    );
-
-    const closeModal = useCallback(() => {
-        setModalCategory(null);
-        setFormValue(null);
-        setOldValueSnapshot(null);
-    }, []);
-
-    const handleSuccess = useCallback((newRequest) => {
-        setPendingMap((prev) => ({
-            ...prev,
-            [newRequest.category]: newRequest,
-        }));
-    }, []);
-
-    // Lazy-load attachments the first time the Files tab is opened
-    const handleTabChange = useCallback((newTab) => {
-        setTab(newTab);
-        if (newTab === "files" && !attachmentsFetched.current) {
-            attachmentsFetched.current = true;
-            setAttachmentsLoading(true);
-            router.reload({
-                only: ["attachments"],
-                onFinish: () => setAttachmentsLoading(false),
-            });
-        }
-    }, []);
+export default function EmployeeShow({
+    employee,
+    shuttles = [],
+    changeRequests = {},
+    attachments,
+}) {
+    const {
+        tab,
+        attachmentsLoading,
+        modalCategory,
+        formValue,
+        setFormValue,
+        oldValueSnapshot,
+        pendingMap,
+        pal,
+        loadOptions,
+        employeeOptions,
+        handleEmployeeChange,
+        openModal,
+        closeModal,
+        handleSuccess,
+        handleTabChange,
+    } = useEmployeeShow(employee, changeRequests);
 
     const renderForm = () => {
         if (!modalCategory || formValue === null) return null;
@@ -232,36 +90,15 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
             case "name":
                 return <NameForm value={formValue} onChange={setFormValue} />;
             case "civil_status":
-                return (
-                    <CivilStatusForm
-                        value={formValue}
-                        onChange={setFormValue}
-                    />
-                );
+                return <CivilStatusForm value={formValue} onChange={setFormValue} />;
             case "address":
-                return (
-                    <AddressForm value={formValue} onChange={setFormValue} />
-                );
+                return <AddressForm value={formValue} onChange={setFormValue} />;
             case "education":
-                return (
-                    <EducationForm value={formValue} onChange={setFormValue} />
-                );
+                return <EducationForm value={formValue} onChange={setFormValue} />;
             case "father":
-                return (
-                    <ParentForm
-                        value={formValue}
-                        onChange={setFormValue}
-                        gender="Male"
-                    />
-                );
+                return <ParentForm value={formValue} onChange={setFormValue} gender="Male" />;
             case "mother":
-                return (
-                    <ParentForm
-                        value={formValue}
-                        onChange={setFormValue}
-                        gender="Female"
-                    />
-                );
+                return <ParentForm value={formValue} onChange={setFormValue} gender="Female" />;
             case "spouse":
                 return <SpouseForm value={formValue} onChange={setFormValue} />;
             case "children":
@@ -323,11 +160,7 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                         </div>
                         <div className="flex-1" />
                         <Badge
-                            variant={
-                                employee.accstatus == 1
-                                    ? "default"
-                                    : "destructive"
-                            }
+                            variant={employee.accstatus == 1 ? "default" : "destructive"}
                             className="text-[10px] uppercase tracking-widest font-mono px-2"
                         >
                             {employee.accstatus == 1 ? "Active" : "Inactive"}
@@ -341,7 +174,7 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                         <div
                             className={`w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-[20px] font-bold shrink-0 ${pal.bg} ${pal.text}`}
                         >
-                            {initials(employee.emp_name)}
+                            {employee.emp_name?.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?"}
                         </div>
 
                         <div className="flex-1 min-w-0 pt-0.5">
@@ -349,17 +182,10 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                                 <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none">
                                     {employee.emp_name}
                                 </h1>
-                                <EditSectionDropdown
-                                    onSelect={openModal}
-                                    pendingMap={pendingMap}
-                                />
+                                <EditSectionDropdown onSelect={openModal} pendingMap={pendingMap} />
                             </div>
                             <p className="text-[13px] text-muted-foreground mb-3 leading-relaxed">
-                                {[
-                                    employee.emp_jobtitle,
-                                    employee.emp_dept,
-                                    employee.emp_prodline,
-                                ]
+                                {[employee.emp_jobtitle, employee.emp_dept, employee.emp_prodline]
                                     .filter(Boolean)
                                     .join("  ·  ") || "—"}
                             </p>
@@ -387,24 +213,9 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
 
                     {/* ── Tabs ── */}
                     <div className="border-b border-border/50 flex gap-5 mb-2">
-                        <TabBtn
-                            active={tab === "personal"}
-                            onClick={() => handleTabChange("personal")}
-                        >
-                            Personal
-                        </TabBtn>
-                        <TabBtn
-                            active={tab === "work"}
-                            onClick={() => handleTabChange("work")}
-                        >
-                            Work
-                        </TabBtn>
-                        <TabBtn
-                            active={tab === "files"}
-                            onClick={() => handleTabChange("files")}
-                        >
-                            Files
-                        </TabBtn>
+                        <TabBtn active={tab === "personal"} onClick={() => handleTabChange("personal")}>Personal</TabBtn>
+                        <TabBtn active={tab === "work"}     onClick={() => handleTabChange("work")}>Work</TabBtn>
+                        <TabBtn active={tab === "files"}    onClick={() => handleTabChange("files")}>Files</TabBtn>
                     </div>
 
                     {/* ══ PERSONAL TAB ══ */}
@@ -412,104 +223,39 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                         <>
                             <SectionDivider title="Basic Information" />
                             <PendingBadge request={pendingMap["name"]} />
-                            <PendingBadge
-                                request={pendingMap["civil_status"]}
-                            />
+                            <PendingBadge request={pendingMap["civil_status"]} />
                             <PendingBadge request={pendingMap["education"]} />
                             <PendingBadge request={pendingMap["others"]} />
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5 mt-3">
-                                <Field
-                                    label="First Name"
-                                    value={employee.emp_firstname}
-                                />
-                                <Field
-                                    label="Middle Name"
-                                    value={employee.emp_middlename}
-                                />
-                                <Field
-                                    label="Last Name"
-                                    value={employee.emp_lastname}
-                                />
-                                <Field
-                                    label="Nickname"
-                                    value={employee.nickname}
-                                />
-                                <Field
-                                    label="Birthday"
-                                    value={employee.birthday}
-                                />
-                                <Field
-                                    label="Place of Birth"
-                                    value={employee.place_of_birth}
-                                />
-                                <Field
-                                    label="Sex"
-                                    value={SEX_LABELS[employee.emp_sex] ?? employee.emp_sex}
-                                />
-                                <Field
-                                    label="Civil Status"
-                                    value={employee.civil_status}
-                                />
-                                <Field
-                                    label="Religion"
-                                    value={employee.religion}
-                                />
-                                <Field
-                                    label="Blood Type"
-                                    value={employee.blood_type}
-                                />
-                                <Field label="Height" value={employee.height} />
-                                <Field label="Weight" value={employee.weight} />
-                                <Field label="Email" value={employee.email} />
-                                <Field
-                                    label="Contact No"
-                                    value={employee.contact_no}
-                                />
-                                <Field
-                                    label="Education"
-                                    value={employee.educational_attainment}
-                                />
-                                <Field
-                                    label="Shuttle"
-                                    value={employee.shuttle}
-                                />
+                                <Field label="First Name"     value={employee.emp_firstname} />
+                                <Field label="Middle Name"    value={employee.emp_middlename} />
+                                <Field label="Last Name"      value={employee.emp_lastname} />
+                                <Field label="Nickname"       value={employee.nickname} />
+                                <Field label="Birthday"       value={employee.birthday} />
+                                <Field label="Place of Birth" value={employee.place_of_birth} />
+                                <Field label="Sex"            value={SEX_LABELS[employee.emp_sex] ?? employee.emp_sex} />
+                                <Field label="Civil Status"   value={employee.civil_status} />
+                                <Field label="Religion"       value={employee.religion} />
+                                <Field label="Blood Type"     value={employee.blood_type} />
+                                <Field label="Height"         value={employee.height} />
+                                <Field label="Weight"         value={employee.weight} />
+                                <Field label="Email"          value={employee.email} />
+                                <Field label="Contact No"     value={employee.contact_no} />
+                                <Field label="Education"      value={employee.educational_attainment} />
+                                <Field label="Shuttle"        value={employee.shuttle} />
                             </div>
 
                             <SectionDivider title="Address" />
                             <PendingBadge request={pendingMap["address"]} />
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5 mt-3">
-                                <Field
-                                    label="House No."
-                                    value={employee.address?.house_no}
-                                />
-                                <Field
-                                    label="Barangay"
-                                    value={employee.address?.brgy}
-                                />
-                                <Field
-                                    label="City"
-                                    value={employee.address?.city}
-                                />
-                                <Field
-                                    label="Province"
-                                    value={employee.address?.province}
-                                />
-                                <Field
-                                    label="Perma House."
-                                    value={employee.address?.perma_house_no}
-                                />
-                                <Field
-                                    label="Perma Brgy."
-                                    value={employee.address?.perma_brgy}
-                                />
-                                <Field
-                                    label="Perma City"
-                                    value={employee.address?.perma_city}
-                                />
-                                <Field
-                                    label="Perma Prov."
-                                    value={employee.address?.perma_province}
-                                />
+                                <Field label="House No."   value={employee.address?.house_no} />
+                                <Field label="Barangay"    value={employee.address?.brgy} />
+                                <Field label="City"        value={employee.address?.city} />
+                                <Field label="Province"    value={employee.address?.province} />
+                                <Field label="Perma House." value={employee.address?.perma_house_no} />
+                                <Field label="Perma Brgy." value={employee.address?.perma_brgy} />
+                                <Field label="Perma City"  value={employee.address?.perma_city} />
+                                <Field label="Perma Prov." value={employee.address?.perma_province} />
                             </div>
 
                             <SectionDivider title="Family" />
@@ -517,80 +263,40 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                                 <PendingBadge request={pendingMap["father"]} />
                                 <PendingBadge request={pendingMap["mother"]} />
                                 <PendingBadge request={pendingMap["spouse"]} />
-                                <PendingBadge
-                                    request={pendingMap["children"]}
-                                />
-                                <PendingBadge
-                                    request={pendingMap["siblings"]}
-                                />
+                                <PendingBadge request={pendingMap["children"]} />
+                                <PendingBadge request={pendingMap["siblings"]} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FamilyTable
                                     title="Parents"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
+                                    columns={["Name", "Birthday", "Age", "Gender"]}
                                     rows={(employee.parent ?? []).map((p) => ({
-                                        name: p.parent_name,
-                                        bday: p.parent_bday,
-                                        age: p.parent_age,
-                                        gender: p.parent_gender,
+                                        name: p.parent_name, bday: p.parent_bday, age: p.parent_age, gender: p.parent_gender,
                                     }))}
                                     emptyMsg="No parents on record."
                                 />
                                 <FamilyTable
                                     title="Spouse"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
+                                    columns={["Name", "Birthday", "Age", "Gender"]}
                                     rows={(employee.spouse ?? []).map((sp) => ({
-                                        name: sp.spouse_name,
-                                        bday: sp.spouse_bday,
-                                        age: sp.spouse_age,
-                                        gender: sp.spouse_gender,
+                                        name: sp.spouse_name, bday: sp.spouse_bday, age: sp.spouse_age, gender: sp.spouse_gender,
                                     }))}
                                     emptyMsg="No spouse on record."
                                 />
                                 <FamilyTable
                                     title="Siblings"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
-                                    rows={(employee.siblings ?? []).map(
-                                        (s) => ({
-                                            name: s.sibling_name,
-                                            bday: s.sibling_bday,
-                                            age: s.sibling_age,
-                                            gender: s.sibling_gender,
-                                        }),
-                                    )}
+                                    columns={["Name", "Birthday", "Age", "Gender"]}
+                                    rows={(employee.siblings ?? []).map((s) => ({
+                                        name: s.sibling_name, bday: s.sibling_bday, age: s.sibling_age, gender: s.sibling_gender,
+                                    }))}
                                     emptyMsg="No siblings on record."
                                 />
                                 <FamilyTable
                                     title="Children"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
-                                    rows={(employee.children ?? []).map(
-                                        (c) => ({
-                                            name: c.child_name,
-                                            bday: c.child_bday,
-                                            age: c.child_age,
-                                            gender: c.child_gender,
-                                        }),
-                                    )}
+                                    columns={["Name", "Birthday", "Age", "Gender"]}
+                                    rows={(employee.children ?? []).map((c) => ({
+                                        name: c.child_name, bday: c.child_bday, age: c.child_age, gender: c.child_gender,
+                                    }))}
                                     emptyMsg="No children on record."
                                 />
                             </div>
@@ -602,80 +308,29 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                         <>
                             <SectionDivider title="Work Information" />
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                <Field
-                                    label="Department"
-                                    value={employee.emp_dept}
-                                />
-                                <Field
-                                    label="Job Title"
-                                    value={employee.emp_jobtitle}
-                                />
-                                <Field
-                                    label="Product Line"
-                                    value={employee.emp_prodline}
-                                />
-                                <Field
-                                    label="Station"
-                                    value={employee.emp_station}
-                                />
-                                <Field
-                                    label="Position"
-                                    value={employee.emp_position}
-                                />
-                                <Field
-                                    label="Employee Status"
-                                    value={employee.emp_status}
-                                />
-                                <Field
-                                    label="Employee Class"
-                                    value={employee.emp_class}
-                                />
-                                <Field
-                                    label="Shift Type"
-                                    value={employee.shift_type}
-                                />
-                                <Field
-                                    label="Date Hired"
-                                    value={employee.date_hired}
-                                />
-                                <Field
-                                    label="Date Regularized"
-                                    value={employee.date_reg}
-                                />
-                                <Field
-                                    label="Service Length"
-                                    value={employee.service_length}
-                                />
+                                <Field label="Department"       value={employee.emp_dept} />
+                                <Field label="Job Title"        value={employee.emp_jobtitle} />
+                                <Field label="Product Line"     value={employee.emp_prodline} />
+                                <Field label="Station"          value={employee.emp_station} />
+                                <Field label="Team"             value={employee.team} />
+                                <Field label="Position"         value={employee.emp_position} />
+                                <Field label="Employee Status"  value={employee.emp_status} />
+                                <Field label="Employee Class"   value={employee.emp_class} />
+                                <Field label="Shift Type"       value={employee.shift_type} />
+                                <Field label="Date Hired"       value={employee.date_hired} />
+                                <Field label="Date Regularized" value={employee.date_reg} />
+                                <Field label="Service Length"   value={employee.service_length} />
                             </div>
 
                             {employee.gov_info && (
                                 <>
                                     <SectionDivider title="Government Information" />
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                        <Field
-                                            label="TIN No"
-                                            value={employee.gov_info.tin_no}
-                                        />
-                                        <Field
-                                            label="SSS No"
-                                            value={employee.gov_info.sss_no}
-                                        />
-                                        <Field
-                                            label="PhilHealth No"
-                                            value={
-                                                employee.gov_info.philhealth_no
-                                            }
-                                        />
-                                        <Field
-                                            label="Pag-IBIG No"
-                                            value={employee.gov_info.pagibig_no}
-                                        />
-                                        <Field
-                                            label="Bank Account"
-                                            value={
-                                                employee.gov_info.bank_acct_no
-                                            }
-                                        />
+                                        <Field label="TIN No"        value={employee.gov_info.tin_no} />
+                                        <Field label="SSS No"        value={employee.gov_info.sss_no} />
+                                        <Field label="PhilHealth No" value={employee.gov_info.philhealth_no} />
+                                        <Field label="Pag-IBIG No"   value={employee.gov_info.pagibig_no} />
+                                        <Field label="Bank Account"  value={employee.gov_info.bank_acct_no} />
                                     </div>
                                 </>
                             )}
@@ -684,32 +339,18 @@ export default function EmployeeShow({ employee, shuttles = [], changeRequests =
                                 <>
                                     <SectionDivider title="Approvers" />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        <ApproverCard
-                                            label="Approver 1"
-                                            value={employee.approver.approver1}
-                                            colorId={1}
-                                        />
-                                        <ApproverCard
-                                            label="Approver 2"
-                                            value={employee.approver.approver2}
-                                            colorId={2}
-                                        />
-                                        <ApproverCard
-                                            label="Approver 3"
-                                            value={employee.approver.approver3}
-                                            colorId={3}
-                                        />
+                                        <ApproverCard label="Approver 1" value={employee.approver.approver1} colorId={1} />
+                                        <ApproverCard label="Approver 2" value={employee.approver.approver2} colorId={2} />
+                                        <ApproverCard label="Approver 3" value={employee.approver.approver3} colorId={3} />
                                     </div>
                                 </>
                             )}
                         </>
                     )}
+
                     {/* ══ FILES TAB ══ */}
                     {tab === "files" && (
-                        <FilesTab
-                            attachments={attachments}
-                            loading={attachmentsLoading}
-                        />
+                        <FilesTab attachments={attachments} loading={attachmentsLoading} />
                     )}
                 </div>
             </div>
