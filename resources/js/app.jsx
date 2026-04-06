@@ -8,7 +8,8 @@ import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import { ConfigProvider, theme as antdTheme } from "antd";
 import { ThemeProvider, ThemeContext } from "../js/Components/ThemeContext";
 
-import { Toaster } from "sonner"; // ✅ ADD THIS
+import { Toaster, toast } from "sonner";
+window.toast = toast;
 
 const rawAppName = import.meta.env.VITE_APP_NAME || "Laravel";
 const appName = rawAppName

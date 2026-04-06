@@ -19,52 +19,62 @@ class EmployeeChangeRequestController extends Controller
 
     // ─── HR Table Page ───────────────────────────────────────────────────────
 
-    /**
-     * GET /change-requests
-     * HR queue — Inertia page with paginated table
-     */
     public function index(Request $request): Response
     {
-        $filters = $request->only([
-            'status',
-            'category',
-            'date_from',
-            'date_to',
-            'employid',
-            'per_page'
-        ]);
-
-        // Default status to pending
+        $filters = $request->only(['status', 'category', 'date_from', 'date_to', 'employid', 'per_page']);
         $filters['status'] ??= 'pending';
 
-        $paginated = $this->service->getAllForHR($filters);
-
         return Inertia::render('ChangeRequests/Index', [
-            'requests'   => ChangeRequestResource::collection($paginated),
+            'requests'   => ChangeRequestResource::collection($this->service->getAllForHR($filters)),
             'filters'    => $filters,
             'categories' => EmployeeChangeRequest::CATEGORIES,
         ]);
     }
 
+    // ─── HR Approve / Reject ─────────────────────────────────────────────────
+
+    public function approve(int $id): \Illuminate\Http\RedirectResponse
+    {
+        try {
+            $this->service->approve($id, session('emp_data.emp_id'));
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['message' => $e->getMessage()]);
+        }
+
+        return back();
+    }
+
+    public function reject(Request $request, int $id): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'remarks' => ['required', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->service->reject($id, $validated['remarks'], session('emp_data.emp_id'));
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['message' => $e->getMessage()]);
+        }
+
+        return back();
+    }
+
     // ─── Employee Submit ─────────────────────────────────────────────────────
 
-    /**
-     * POST /change-requests
-     * Employee submits a change request
-     */
     public function store(Request $request): JsonResponse
     {
         $request->merge([
             'old_value' => json_decode($request->old_value, true),
             'new_value' => json_decode($request->new_value, true),
         ]);
+
         $validated = $request->validate([
             'employid'         => ['required', 'integer'],
             'category'         => ['required', 'string', 'in:' . implode(',', array_keys(EmployeeChangeRequest::CATEGORIES))],
             'old_value'        => ['required', 'array'],
             'new_value'        => ['required', 'array'],
             'attachment_id'    => ['nullable', 'integer', 'exists:employee_attachments,id'],
-            'file'             => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'], // 5MB
+            'file'             => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'file_description' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -88,61 +98,8 @@ class EmployeeChangeRequestController extends Controller
         }
     }
 
-    // ─── HR Approve / Reject ─────────────────────────────────────────────────
+    // ─── Attachments ─────────────────────────────────────────────────────────
 
-    /**
-     * POST /change-requests/{id}/approve
-     */
-    public function approve(int $id, Request $request): JsonResponse
-    {
-        // Get HR user from session (adjust based on your session structure)
-        $hrData = session('emp_data'); // or session('hrdata')
-        $reviewerId = $hrData['emp_id'] ?? null;
-
-        try {
-            $changeRequest = $this->service->approve($id, $reviewerId);
-
-            return response()->json([
-                'success' => true,
-                'data'    => new ChangeRequestResource($changeRequest->load(['attachment', 'requester', 'reviewer'])),
-            ]);
-        } catch (\RuntimeException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
-        }
-    }
-
-    /**
-     * POST /change-requests/{id}/reject
-     */
-    public function reject(Request $request, int $id): JsonResponse
-    {
-        $validated = $request->validate([
-            'remarks' => ['required', 'string', 'max:1000'],
-        ]);
-
-        // Get HR user from session (adjust based on your session structure)
-        $hrData = session('emp_data'); // or session('hrdata')
-        $reviewerId = $hrData['emp_id'] ?? null;
-
-        try {
-            $changeRequest = $this->service->reject($id, $validated['remarks'], $reviewerId);
-
-            return response()->json([
-                'success' => true,
-                'data'    => new ChangeRequestResource($changeRequest->load(['attachment', 'requester', 'reviewer'])),
-            ]);
-        } catch (\RuntimeException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
-        }
-    }
-    
-
-    // ─── Attachment upload (standalone — for reuse across categories) ─────────
-
-    /**
-     * POST /change-requests/attachments
-     * Upload a file independently — returns attachment record so it can be reused
-     */
     public function uploadAttachment(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -171,14 +128,9 @@ class EmployeeChangeRequestController extends Controller
         ]);
     }
 
-    /**
-     * GET /change-requests/attachments?employid=xxx
-     * Fetch all uploaded attachments for an employee (for the "choose existing" list)
-     */
     public function listAttachments(Request $request): JsonResponse
     {
-        $employid    = $request->integer('employid');
-        $attachments = $this->service->getAttachmentsForEmployee($employid);
+        $attachments = $this->service->getAttachmentsForEmployee($request->integer('employid'));
 
         return response()->json([
             'success' => true,
