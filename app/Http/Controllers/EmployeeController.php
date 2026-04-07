@@ -2,10 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EmployeeClass;
-use App\Models\EmployeeCompany;
-use App\Models\EmployeeDepartment;
-use App\Models\EmployeeStatus;
 use App\Services\EmployeeAttachmentService;
 use App\Services\EmployeeService;
 use App\Services\ShuttleService;
@@ -16,9 +12,9 @@ use Inertia\Response;
 class EmployeeController extends Controller
 {
     public function __construct(
-        protected EmployeeService            $employeeService,
-        protected ShuttleService             $shuttleService,
-        protected EmployeeAttachmentService  $attachmentService,
+        protected EmployeeService           $employeeService,
+        protected ShuttleService            $shuttleService,
+        protected EmployeeAttachmentService $attachmentService,
     ) {}
 
     public function index(Request $request): Response
@@ -35,41 +31,33 @@ class EmployeeController extends Controller
             array_flip(['search', 'company', 'department', 'status', 'class', 'page', 'per_page'])
         );
 
-        $result  = $this->employeeService->getEmployeeListForTable($filters);
-
         return Inertia::render('Employee/Index', [
-            'employees'   => $result,
-            'filters'     => $filters,
-            'lookups'     => [
-                'companies'   => EmployeeCompany::orderBy('company_name')->pluck('company_name', 'id'),
-                'departments' => EmployeeDepartment::orderBy('dept_name')->pluck('dept_name', 'id'),
-                'statuses'    => EmployeeStatus::orderBy('status_name')->pluck('status_name', 'id'),
-                'classes'     => EmployeeClass::orderBy('class_name')->pluck('class_name', 'id'),
-            ],
+            'employees' => $this->employeeService->getEmployeeListForTable($filters),
+            'filters'   => $filters,
+            'lookups'   => $this->employeeService->getIndexLookups(),
         ]);
     }
 
     public function show(string $employid, Request $request): Response
     {
-        $decoded   = base64_decode($employid, strict: true);
-        $employid  = ($decoded !== false && ctype_digit($decoded)) ? (int) $decoded : 0;
-
-        $result = $this->employeeService->getFullDetail($employid);
+        $employid = $this->decodeEmployid($employid);
+        $result   = $this->employeeService->getFullDetail($employid);
 
         if (!$result['success']) {
             abort(404, 'Employee not found.');
         }
 
-        return Inertia::render('Employee/Show', [
-            'employee'    => $result['data'],
-            'shuttles'    => $this->shuttleService->getAll(),
+        $isAdmin = session('emp_data.emp_id') == 0;
 
-            // Loaded on demand when the Files tab is first opened
+        return Inertia::render('Employee/Show', [
+            'employee'     => $result['data'],
+            'shuttles'     => $this->shuttleService->getAll(),
+            'adminLookups' => $isAdmin ? $this->employeeService->getAdminLookups() : null,
+
             'attachments' => Inertia::lazy(
-                fn () => $this->attachmentService->getForEmployee($employid)
+                fn() => $this->attachmentService->getForEmployee($employid)
             ),
 
-            // Loaded on demand when the employee combobox is opened
             'activeEmployees' => Inertia::lazy(function () use ($request) {
                 $encoded = $request->query('q', '');
                 $params  = [];
@@ -84,5 +72,53 @@ class EmployeeController extends Controller
                 ]);
             }),
         ]);
+    }
+
+    public function adminUpdate(string $employid, Request $request)
+    {
+        if (session('emp_data.emp_id') != 0) abort(403);
+
+        $this->employeeService->adminUpdateField(
+            $this->decodeEmployid($employid),
+            $request->input('table', 'personal'),
+            $request->input('field'),
+            $request->input('value'),
+            $request->input('family_type'),
+            $request->integer('row_id') ?: null,
+        );
+
+        return back();
+    }
+
+    public function adminFamilyAdd(string $employid, Request $request)
+    {
+        if (session('emp_data.emp_id') != 0) abort(403);
+
+        $this->employeeService->adminAddFamilyRow(
+            $this->decodeEmployid($employid),
+            $request->input('family_type'),
+            $request->input('data', []),
+        );
+
+        return back();
+    }
+
+    public function adminFamilyDelete(string $employid, int $rowId, Request $request)
+    {
+        if (session('emp_data.emp_id') != 0) abort(403);
+
+        $this->employeeService->adminDeleteFamilyRow(
+            $this->decodeEmployid($employid),
+            $request->input('family_type'),
+            $rowId,
+        );
+
+        return back();
+    }
+
+    private function decodeEmployid(string $employid): int
+    {
+        $decoded = base64_decode($employid, strict: true);
+        return ($decoded !== false && ctype_digit($decoded)) ? (int) $decoded : 0;
     }
 }

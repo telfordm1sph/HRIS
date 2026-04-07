@@ -14,6 +14,15 @@ Route::prefix($app_name)->group(function () {
     Route::get('/employees/{employid}', [EmployeeController::class, 'show'])
         ->name('employees.show');
 
+    Route::patch('/employees/{employid}/admin-update', [EmployeeController::class, 'adminUpdate'])
+        ->name('employees.admin-update');
+
+    Route::post('/employees/{employid}/admin-family-add', [EmployeeController::class, 'adminFamilyAdd'])
+        ->name('employees.admin-family-add');
+
+    Route::delete('/employees/{employid}/admin-family/{rowId}', [EmployeeController::class, 'adminFamilyDelete'])
+        ->name('employees.admin-family-delete');
+
     // ── File serving — web stack so session/cookie auth works in browser ─────
     Route::get('/attachments/{id}', [AttachmentController::class, 'view'])
         ->middleware('throttle:api-reads')

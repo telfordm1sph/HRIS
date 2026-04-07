@@ -32,6 +32,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'emp_data' => fn() => session('emp_data'),
+            'is_admin' => fn() => session('emp_data.emp_id') == 0,
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),
                 'error'   => fn() => $request->session()->get('error'),

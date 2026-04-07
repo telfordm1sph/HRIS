@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
@@ -25,12 +25,23 @@ import {
     TabBtn,
     ApproverCard,
 } from "@/Components/Employee/EmployeeComponents";
+import AdminEditableField from "@/Components/Employee/AdminEditableField";
+import AdminFamilyTable from "@/Components/Employee/AdminFamilyTable";
+import AdminApproverCard from "@/Components/Employee/AdminApproverCard";
 import FilesTab from "@/Components/Employee/FilesTab";
 import { useEmployeeShow } from "@/Hooks/useEmployeeShow";
 
 const EmployeeCombobox = memo(Combobox);
 
 const SEX_LABELS = { 1: "Male", 2: "Female" };
+const SEX_OPTIONS = [{ value: 1, label: "Male" }, { value: 2, label: "Female" }];
+const CIVIL_STATUS_OPTIONS = [
+    { value: "Single", label: "Single" },
+    { value: "Married", label: "Married" },
+    { value: "Widowed", label: "Widowed" },
+    { value: "Separated", label: "Separated" },
+    { value: "Divorced", label: "Divorced" },
+];
 
 // ─── Pending badge shown under a section title ────────────────────────────────
 
@@ -64,7 +75,10 @@ export default function EmployeeShow({
     shuttles = [],
     changeRequests = {},
     attachments,
+    adminLookups,
 }) {
+    const { is_admin } = usePage().props;
+
     const {
         tab,
         attachmentsLoading,
@@ -82,6 +96,26 @@ export default function EmployeeShow({
         handleSuccess,
         handleTabChange,
     } = useEmployeeShow(employee, changeRequests);
+
+    // base64-encoded employid for admin update route
+    const encodedId = btoa(String(employee.emp_id));
+
+    // Shorthand for admin editable field
+    const AField = ({ label, value, fieldKey, idValue, options, type, table }) =>
+        is_admin ? (
+            <AdminEditableField
+                label={label}
+                value={value}
+                fieldKey={fieldKey}
+                idValue={idValue}
+                options={options}
+                type={type}
+                table={table ?? "personal"}
+                employid={encodedId}
+            />
+        ) : (
+            <Field label={label} value={value} />
+        );
 
     const renderForm = () => {
         if (!modalCategory || formValue === null) return null;
@@ -186,6 +220,11 @@ export default function EmployeeShow({
                             />
                         </div>
                         <div className="flex-1" />
+                        {is_admin && (
+                            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 uppercase tracking-widest">
+                                Admin
+                            </span>
+                        )}
                         <Badge
                             variant={
                                 employee.accstatus == 1
@@ -219,10 +258,12 @@ export default function EmployeeShow({
                                 <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none">
                                     {employee.emp_name}
                                 </h1>
-                                <EditSectionDropdown
-                                    onSelect={openModal}
-                                    pendingMap={pendingMap}
-                                />
+                                {!is_admin && (
+                                    <EditSectionDropdown
+                                        onSelect={openModal}
+                                        pendingMap={pendingMap}
+                                    />
+                                )}
                             </div>
                             <p className="text-[13px] text-muted-foreground mb-3 leading-relaxed">
                                 {[
@@ -281,191 +322,129 @@ export default function EmployeeShow({
                     {tab === "personal" && (
                         <>
                             <SectionDivider title="Basic Information" />
-                            <PendingBadge request={pendingMap["name"]} />
-                            <PendingBadge
-                                request={pendingMap["civil_status"]}
-                            />
-                            <PendingBadge request={pendingMap["education"]} />
-                            <PendingBadge request={pendingMap["others"]} />
+                            {!is_admin && (
+                                <>
+                                    <PendingBadge request={pendingMap["name"]} />
+                                    <PendingBadge request={pendingMap["civil_status"]} />
+                                    <PendingBadge request={pendingMap["education"]} />
+                                    <PendingBadge request={pendingMap["others"]} />
+                                </>
+                            )}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5 mt-3">
-                                <Field
-                                    label="First Name"
-                                    value={employee.emp_firstname}
-                                />
-                                <Field
-                                    label="Middle Name"
-                                    value={employee.emp_middlename}
-                                />
-                                <Field
-                                    label="Last Name"
-                                    value={employee.emp_lastname}
-                                />
-                                <Field
-                                    label="Nickname"
-                                    value={employee.nickname}
-                                />
-                                <Field
-                                    label="Birthday"
-                                    value={employee.birthday}
-                                />
-                                <Field
-                                    label="Place of Birth"
-                                    value={employee.place_of_birth}
-                                />
-                                <Field
+                                <AField label="First Name"      value={employee.emp_firstname}          fieldKey="firstname" />
+                                <AField label="Middle Name"     value={employee.emp_middlename}         fieldKey="middlename" />
+                                <AField label="Last Name"       value={employee.emp_lastname}           fieldKey="lastname" />
+                                <AField label="Nickname"        value={employee.nickname}               fieldKey="nickname" />
+                                <AField label="Birthday"        value={employee.birthday}               fieldKey="birthday" type="date" />
+                                <AField label="Place of Birth"  value={employee.place_of_birth}         fieldKey="place_of_birth" />
+                                <AField
                                     label="Sex"
-                                    value={
-                                        SEX_LABELS[employee.emp_sex] ??
-                                        employee.emp_sex
-                                    }
+                                    value={SEX_LABELS[employee.emp_sex] ?? employee.emp_sex}
+                                    fieldKey="emp_sex"
+                                    idValue={employee.emp_sex}
+                                    options={SEX_OPTIONS}
                                 />
-                                <Field
+                                <AField
                                     label="Civil Status"
                                     value={employee.civil_status}
+                                    fieldKey="civil_status"
+                                    idValue={employee.civil_status}
+                                    options={CIVIL_STATUS_OPTIONS}
                                 />
-                                <Field
-                                    label="Religion"
-                                    value={employee.religion}
-                                />
-                                <Field
-                                    label="Blood Type"
-                                    value={employee.blood_type}
-                                />
-                                <Field label="Height" value={employee.height} />
-                                <Field label="Weight" value={employee.weight} />
-                                <Field label="Email" value={employee.email} />
-                                <Field
-                                    label="Contact No"
-                                    value={employee.contact_no}
-                                />
-                                <Field
-                                    label="Education"
-                                    value={employee.educational_attainment}
-                                />
-                                <Field
-                                    label="Shuttle"
-                                    value={employee.shuttle}
-                                />
+                                <AField label="Religion"        value={employee.religion}               fieldKey="religion" />
+                                <AField label="Blood Type"      value={employee.blood_type}             fieldKey="blood_type" />
+                                <AField label="Height"          value={employee.height}                 fieldKey="height" type="number" />
+                                <AField label="Weight"          value={employee.weight}                 fieldKey="weight" type="number" />
+                                <AField label="Email"           value={employee.email}                  fieldKey="email" />
+                                <AField label="Contact No"      value={employee.contact_no}             fieldKey="contact_no" />
+                                <AField label="Education"       value={employee.educational_attainment} fieldKey="educational_attainment" />
+                                <Field  label="Shuttle"         value={employee.shuttle} />
                             </div>
 
                             <SectionDivider title="Address" />
-                            <PendingBadge request={pendingMap["address"]} />
+                            {!is_admin && <PendingBadge request={pendingMap["address"]} />}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5 mt-3">
-                                <Field
-                                    label="House No."
-                                    value={employee.address?.house_no}
-                                />
-                                <Field
-                                    label="Barangay"
-                                    value={employee.address?.brgy}
-                                />
-                                <Field
-                                    label="City"
-                                    value={employee.address?.city}
-                                />
-                                <Field
-                                    label="Province"
-                                    value={employee.address?.province}
-                                />
-                                <Field
-                                    label="Perma House."
-                                    value={employee.address?.perma_house_no}
-                                />
-                                <Field
-                                    label="Perma Brgy."
-                                    value={employee.address?.perma_brgy}
-                                />
-                                <Field
-                                    label="Perma City"
-                                    value={employee.address?.perma_city}
-                                />
-                                <Field
-                                    label="Perma Prov."
-                                    value={employee.address?.perma_province}
-                                />
+                                <AField label="House No."    value={employee.address?.house_no}       fieldKey="house_no"        table="address" />
+                                <AField label="Barangay"     value={employee.address?.brgy}            fieldKey="brgy"            table="address" />
+                                <AField label="City"         value={employee.address?.city}            fieldKey="city"            table="address" />
+                                <AField label="Province"     value={employee.address?.province}        fieldKey="province"        table="address" />
+                                <AField label="Perma House." value={employee.address?.perma_house_no}  fieldKey="perma_house_no"  table="address" />
+                                <AField label="Perma Brgy."  value={employee.address?.perma_brgy}      fieldKey="perma_brgy"      table="address" />
+                                <AField label="Perma City"   value={employee.address?.perma_city}      fieldKey="perma_city"      table="address" />
+                                <AField label="Perma Prov."  value={employee.address?.perma_province}  fieldKey="perma_province"  table="address" />
                             </div>
 
                             <SectionDivider title="Family" />
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                <PendingBadge request={pendingMap["father"]} />
-                                <PendingBadge request={pendingMap["mother"]} />
-                                <PendingBadge request={pendingMap["spouse"]} />
-                                <PendingBadge
-                                    request={pendingMap["children"]}
-                                />
-                                <PendingBadge
-                                    request={pendingMap["siblings"]}
-                                />
-                            </div>
+                            {!is_admin && (
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    <PendingBadge request={pendingMap["father"]} />
+                                    <PendingBadge request={pendingMap["mother"]} />
+                                    <PendingBadge request={pendingMap["spouse"]} />
+                                    <PendingBadge request={pendingMap["children"]} />
+                                    <PendingBadge request={pendingMap["siblings"]} />
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FamilyTable
-                                    title="Parents"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
-                                    rows={(employee.parent ?? []).map((p) => ({
-                                        name: p.parent_name,
-                                        bday: p.parent_bday,
-                                        age: p.parent_age,
-                                        gender: p.parent_gender,
-                                    }))}
-                                    emptyMsg="No parents on record."
-                                />
-                                <FamilyTable
-                                    title="Spouse"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
-                                    rows={(employee.spouse ?? []).map((sp) => ({
-                                        name: sp.spouse_name,
-                                        bday: sp.spouse_bday,
-                                        age: sp.spouse_age,
-                                        gender: sp.spouse_gender,
-                                    }))}
-                                    emptyMsg="No spouse on record."
-                                />
-                                <FamilyTable
-                                    title="Siblings"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
-                                    rows={(employee.siblings ?? []).map(
-                                        (s) => ({
-                                            name: s.sibling_name,
-                                            bday: s.sibling_bday,
-                                            age: s.sibling_age,
-                                            gender: s.sibling_gender,
-                                        }),
-                                    )}
-                                    emptyMsg="No siblings on record."
-                                />
-                                <FamilyTable
-                                    title="Children"
-                                    columns={[
-                                        "Name",
-                                        "Birthday",
-                                        "Age",
-                                        "Gender",
-                                    ]}
-                                    rows={(employee.children ?? []).map(
-                                        (c) => ({
-                                            name: c.child_name,
-                                            bday: c.child_bday,
-                                            age: c.child_age,
-                                            gender: c.child_gender,
-                                        }),
-                                    )}
-                                    emptyMsg="No children on record."
-                                />
+                                {is_admin ? (
+                                    <AdminFamilyTable
+                                        title="Parents"
+                                        rows={employee.parent ?? []}
+                                        config={{ familyType: "parent", nameKey: "parent_name", bdayKey: "parent_bday", ageKey: "parent_age", genderKey: "parent_gender" }}
+                                        employid={encodedId}
+                                    />
+                                ) : (
+                                    <FamilyTable
+                                        title="Parents"
+                                        columns={["Name", "Birthday", "Age", "Gender"]}
+                                        rows={(employee.parent ?? []).map((p) => ({ name: p.parent_name, bday: p.parent_bday, age: p.parent_age, gender: p.parent_gender }))}
+                                        emptyMsg="No parents on record."
+                                    />
+                                )}
+                                {is_admin ? (
+                                    <AdminFamilyTable
+                                        title="Spouse"
+                                        rows={employee.spouse ?? []}
+                                        config={{ familyType: "spouse", nameKey: "spouse_name", bdayKey: "spouse_bday", ageKey: "spouse_age", genderKey: "spouse_gender" }}
+                                        employid={encodedId}
+                                    />
+                                ) : (
+                                    <FamilyTable
+                                        title="Spouse"
+                                        columns={["Name", "Birthday", "Age", "Gender"]}
+                                        rows={(employee.spouse ?? []).map((sp) => ({ name: sp.spouse_name, bday: sp.spouse_bday, age: sp.spouse_age, gender: sp.spouse_gender }))}
+                                        emptyMsg="No spouse on record."
+                                    />
+                                )}
+                                {is_admin ? (
+                                    <AdminFamilyTable
+                                        title="Siblings"
+                                        rows={employee.siblings ?? []}
+                                        config={{ familyType: "sibling", nameKey: "sibling_name", bdayKey: "sibling_bday", ageKey: "sibling_age", genderKey: "sibling_gender" }}
+                                        employid={encodedId}
+                                    />
+                                ) : (
+                                    <FamilyTable
+                                        title="Siblings"
+                                        columns={["Name", "Birthday", "Age", "Gender"]}
+                                        rows={(employee.siblings ?? []).map((s) => ({ name: s.sibling_name, bday: s.sibling_bday, age: s.sibling_age, gender: s.sibling_gender }))}
+                                        emptyMsg="No siblings on record."
+                                    />
+                                )}
+                                {is_admin ? (
+                                    <AdminFamilyTable
+                                        title="Children"
+                                        rows={employee.children ?? []}
+                                        config={{ familyType: "child", nameKey: "child_name", bdayKey: "child_bday", ageKey: "child_age", genderKey: "child_gender" }}
+                                        employid={encodedId}
+                                    />
+                                ) : (
+                                    <FamilyTable
+                                        title="Children"
+                                        columns={["Name", "Birthday", "Age", "Gender"]}
+                                        rows={(employee.children ?? []).map((c) => ({ name: c.child_name, bday: c.child_bday, age: c.child_age, gender: c.child_gender }))}
+                                        emptyMsg="No children on record."
+                                    />
+                                )}
                             </div>
                         </>
                     )}
@@ -475,108 +454,133 @@ export default function EmployeeShow({
                         <>
                             <SectionDivider title="Work Information" />
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                <Field
+                                <AField
                                     label="Company"
                                     value={employee.company}
+                                    fieldKey="company"
+                                    idValue={employee.company_id}
+                                    options={adminLookups?.companies}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Department"
                                     value={employee.emp_dept}
+                                    fieldKey="department"
+                                    idValue={employee.emp_dept_id}
+                                    options={adminLookups?.departments}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Job Title"
                                     value={employee.emp_jobtitle}
+                                    fieldKey="job_title"
+                                    idValue={employee.emp_jobtitle_id}
+                                    options={adminLookups?.jobTitles}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Product Line"
                                     value={employee.emp_prodline}
+                                    fieldKey="prodline"
+                                    idValue={employee.emp_prodline_id}
+                                    options={adminLookups?.prodLines}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Station"
                                     value={employee.emp_station}
+                                    fieldKey="station"
+                                    idValue={employee.emp_station_id}
+                                    options={adminLookups?.stations}
+                                    table="work"
                                 />
-                                <Field label="Team" value={employee.team} />
-                                <Field
+                                <AField
+                                    label="Team"
+                                    value={employee.team}
+                                    fieldKey="team"
+                                    idValue={employee.team_id}
+                                    options={adminLookups?.teams}
+                                    table="work"
+                                />
+                                <AField
                                     label="Position"
                                     value={employee.emp_position}
+                                    fieldKey="empposition"
+                                    idValue={employee.emp_position_id}
+                                    options={adminLookups?.positions}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Employee Status"
                                     value={employee.emp_status}
+                                    fieldKey="empstatus"
+                                    idValue={employee.emp_status_id}
+                                    options={adminLookups?.statuses}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Employee Class"
                                     value={employee.emp_class}
+                                    fieldKey="empclass"
+                                    idValue={employee.emp_class_id}
+                                    options={adminLookups?.classes}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Shift Type"
                                     value={employee.shift_type}
+                                    fieldKey="shift_type"
+                                    idValue={employee.shift_type_id}
+                                    options={adminLookups?.shifts}
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Date Hired"
                                     value={employee.date_hired}
+                                    fieldKey="date_hired"
+                                    type="date"
+                                    table="work"
                                 />
-                                <Field
+                                <AField
                                     label="Date Regularized"
                                     value={employee.date_reg}
+                                    fieldKey="date_reg"
+                                    type="date"
+                                    table="work"
                                 />
-                                <Field
-                                    label="Service Length"
-                                    value={employee.service_length}
-                                />
+                                <Field label="Service Length" value={employee.service_length} />
                             </div>
 
                             {employee.gov_info && (
                                 <>
                                     <SectionDivider title="Government Information" />
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                                        <Field
-                                            label="TIN No"
-                                            value={employee.gov_info.tin_no}
-                                        />
-                                        <Field
-                                            label="SSS No"
-                                            value={employee.gov_info.sss_no}
-                                        />
-                                        <Field
-                                            label="PhilHealth No"
-                                            value={
-                                                employee.gov_info.philhealth_no
-                                            }
-                                        />
-                                        <Field
-                                            label="Pag-IBIG No"
-                                            value={employee.gov_info.pagibig_no}
-                                        />
-                                        <Field
-                                            label="Bank Account"
-                                            value={
-                                                employee.gov_info.bank_acct_no
-                                            }
-                                        />
+                                        <Field label="TIN No"       value={employee.gov_info.tin_no} />
+                                        <Field label="SSS No"       value={employee.gov_info.sss_no} />
+                                        <Field label="PhilHealth No" value={employee.gov_info.philhealth_no} />
+                                        <Field label="Pag-IBIG No"  value={employee.gov_info.pagibig_no} />
+                                        <Field label="Bank Account" value={employee.gov_info.bank_acct_no} />
                                     </div>
                                 </>
                             )}
 
-                            {employee.approver && (
+                            {(employee.approver || is_admin) && (
                                 <>
                                     <SectionDivider title="Approvers" />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        <ApproverCard
-                                            label="Approver 1"
-                                            value={employee.approver.approver1}
-                                            colorId={1}
-                                        />
-                                        <ApproverCard
-                                            label="Approver 2"
-                                            value={employee.approver.approver2}
-                                            colorId={2}
-                                        />
-                                        <ApproverCard
-                                            label="Approver 3"
-                                            value={employee.approver.approver3}
-                                            colorId={3}
-                                        />
+                                        {is_admin ? (
+                                            <>
+                                                <AdminApproverCard label="Approver 1" value={employee.approver?.approver1} approverField="approver1" approverId={employee.approver?.approver1_id} employid={encodedId} />
+                                                <AdminApproverCard label="Approver 2" value={employee.approver?.approver2} approverField="approver2" approverId={employee.approver?.approver2_id} employid={encodedId} />
+                                                <AdminApproverCard label="Approver 3" value={employee.approver?.approver3} approverField="approver3" approverId={employee.approver?.approver3_id} employid={encodedId} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ApproverCard label="Approver 1" value={employee.approver.approver1} colorId={1} />
+                                                <ApproverCard label="Approver 2" value={employee.approver.approver2} colorId={2} />
+                                                <ApproverCard label="Approver 3" value={employee.approver.approver3} colorId={3} />
+                                            </>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -593,8 +597,8 @@ export default function EmployeeShow({
                 </div>
             </div>
 
-            {/* ── Change Request Modal ── */}
-            {modalCategory && (
+            {/* ── Change Request Modal (non-admin only) ── */}
+            {!is_admin && modalCategory && (
                 <ChangeRequestModal
                     open
                     onClose={closeModal}

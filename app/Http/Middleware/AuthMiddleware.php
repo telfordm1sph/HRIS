@@ -18,6 +18,12 @@ class AuthMiddleware
 
     public function handle(Request $request, Closure $next)
     {
+        // Internal service-to-service calls (e.g. Authify fetching employee data
+        // during login) carry X-Internal-Key and must bypass SSO entirely.
+        if ($request->header('X-Internal-Key') === config('services.internal.key')) {
+            return $next($request);
+        }
+
         $cookieName = env('SSO_COOKIE_NAME', 'sso_token');
 
         // 1️⃣ Get token sources (priority: query → cookie → session)

@@ -15,10 +15,15 @@ class RateLimiters
         $key = fn (Request $request): string =>
             (string) ($request->user()?->emp_id ?? $request->ip());
 
-        // General API reads — 60 per minute per user
-        RateLimiter::for('api-reads', fn (Request $r) =>
-            Limit::perMinute(60)->by($key($r))
-        );
+        // General API reads — 60 per minute per user.
+        // Internal service calls (e.g. Authify login fetching employee data) carry
+        // X-Internal-Key and must never be blocked by the IP fallback.
+        RateLimiter::for('api-reads', function (Request $r) use ($key) {
+            if ($r->header('X-Internal-Key') === config('services.internal.key')) {
+                return Limit::none();
+            }
+            return Limit::perMinute(60)->by($key($r));
+        });
 
         // Change request submissions — 20 per minute per user
         RateLimiter::for('cr-submit', fn (Request $r) =>

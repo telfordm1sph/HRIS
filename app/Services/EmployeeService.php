@@ -175,6 +175,75 @@ class EmployeeService
         return (string) $approverId;
     }
 
+    public function getIndexLookups(): array
+    {
+        return $this->repository->getIndexLookups();
+    }
+
+    public function getAdminLookups(): array
+    {
+        return $this->repository->getAdminLookups();
+    }
+
+    // ── Admin direct-write methods ────────────────────────────────────────────
+
+    private const PERSONAL_FIELDS = [
+        'firstname','middlename','lastname','nickname','birthday','place_of_birth',
+        'emp_sex','email','contact_no','civil_status','religion','height','weight',
+        'blood_type','educational_attainment',
+    ];
+    private const WORK_FIELDS = [
+        'company','department','job_title','prodline','station','team',
+        'empposition','empstatus','empclass','shift_type','shuttle','date_hired','date_reg',
+    ];
+    private const ADDRESS_FIELDS = [
+        'house_no','brgy','city','province','perma_house_no','perma_brgy','perma_city','perma_province',
+    ];
+    private const APPROVER_FIELDS = ['approver1','approver2','approver3'];
+    private const FAMILY_FIELDS = [
+        'parent'  => ['parent_name','parent_bday','parent_age','parent_gender'],
+        'spouse'  => ['spouse_name','spouse_bday','spouse_age','spouse_gender'],
+        'sibling' => ['sibling_name','sibling_bday','sibling_age','sibling_gender'],
+        'child'   => ['child_name','child_bday','child_age','child_gender'],
+    ];
+
+    public function adminUpdateField(int $empId, string $table, string $field, mixed $value, ?string $familyType = null, ?int $rowId = null): void
+    {
+        match ($table) {
+            'address'  => $this->guardAndCall(self::ADDRESS_FIELDS,  $field, fn() => $this->repository->updateAddressField($empId, $field, $value)),
+            'approver' => $this->guardAndCall(self::APPROVER_FIELDS, $field, fn() => $this->repository->updateApproverField($empId, $field, $value)),
+            'work'     => $this->guardAndCall(self::WORK_FIELDS,     $field, fn() => $this->repository->updateWorkField($empId, $field, $value)),
+            'family'   => $this->doFamilyUpdate($familyType, $rowId, $empId, $field, $value),
+            default    => $this->guardAndCall(self::PERSONAL_FIELDS,  $field, fn() => $this->repository->updatePersonalField($empId, $field, $value)),
+        };
+    }
+
+    public function adminAddFamilyRow(int $empId, string $familyType, array $data): void
+    {
+        abort_if(!array_key_exists($familyType, self::FAMILY_FIELDS), 422, 'Unknown family type.');
+        $this->repository->addFamilyRow($familyType, $empId, $data);
+    }
+
+    public function adminDeleteFamilyRow(int $empId, string $familyType, int $rowId): void
+    {
+        abort_if(!array_key_exists($familyType, self::FAMILY_FIELDS), 422, 'Unknown family type.');
+        $this->repository->deleteFamilyRow($familyType, $rowId, $empId);
+    }
+
+    private function guardAndCall(array $allowed, string $field, callable $fn): void
+    {
+        abort_if(!in_array($field, $allowed), 422, "Unknown field: {$field}");
+        $fn();
+    }
+
+    private function doFamilyUpdate(?string $familyType, ?int $rowId, int $empId, string $field, mixed $value): void
+    {
+        abort_if(!$familyType || !array_key_exists($familyType, self::FAMILY_FIELDS), 422, 'Unknown family type.');
+        abort_if(!in_array($field, self::FAMILY_FIELDS[$familyType]), 422, "Unknown family field: {$field}");
+        abort_if(!$rowId, 422, 'row_id required for family update.');
+        $this->repository->updateFamilyRow($familyType, $rowId, $empId, $field, $value);
+    }
+
     public function getWorkDetail(int $employid): array
     {
         $work = $this->repository->getWorkDetailByEmployid($employid);
