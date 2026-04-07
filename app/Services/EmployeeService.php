@@ -244,6 +244,32 @@ class EmployeeService
         $this->repository->updateFamilyRow($familyType, $rowId, $empId, $field, $value);
     }
 
+    public function getAuthDetail(int $employid): array
+    {
+        $employee = $this->repository->getAuthDetailByEmployid($employid);
+
+        if (!$employee) {
+            return $this->notFound();
+        }
+
+        $work = $employee->workDetail;
+
+        return [
+            'success' => true,
+            'data'    => [
+                'emp_id'          => $employee->employid,
+                'emp_name'        => trim($employee->firstname . ' ' . $employee->middlename . ' ' . $employee->lastname),
+                'emp_firstname'   => $employee->firstname,
+                'accstatus'       => $employee->accstatus,
+                'emp_dept_id'     => $work->department    ?? null,
+                'emp_jobtitle_id' => $work->job_title     ?? null,
+                'emp_prodline_id' => $work->prodline      ?? null,
+                'emp_position_id' => $work->empposition   ?? null,
+                'emp_station_id'  => $work->station       ?? null,
+            ],
+        ];
+    }
+
     public function getWorkDetail(int $employid): array
     {
         $work = $this->repository->getWorkDetailByEmployid($employid);

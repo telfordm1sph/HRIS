@@ -51,6 +51,13 @@ class EmployeeRepository
         ])->where('employid', $employid)->first();
     }
 
+    public function getAuthDetailByEmployid(int $employid): ?EmployeeDetail
+    {
+        return EmployeeDetail::with([
+            'workDetail',
+        ])->where('employid', $employid)->first();
+    }
+
     public function getWorkDetailByEmployid(int $employid)
     {
         return EmployeeWorkDetail::with([

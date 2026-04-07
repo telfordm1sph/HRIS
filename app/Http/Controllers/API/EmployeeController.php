@@ -28,6 +28,21 @@ class EmployeeController extends Controller
     }
 
     /**
+     * GET /api/employees/{employid}/auth
+     * Slim payload for SSO login — personal identifiers + work IDs only, no resolved names
+     */
+    public function auth(int $employid): JsonResponse
+    {
+        $result = $this->service->getAuthDetail($employid);
+
+        if (!$result['success']) {
+            return response()->json($result, 404);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
      * GET /api/employees/{employid}/work
      * Work details only + resolved names
      */
