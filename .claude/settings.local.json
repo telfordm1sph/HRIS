@@ -7,7 +7,10 @@
       "Bash(php:*)",
       "Bash(find storage:*)",
       "Bash(npm install:*)",
-      "Bash(grep -r \"@/\" C:/Users/telford.programmer/Desktop/HRIS/vite.config.*)"
+      "Bash(grep -r \"@/\" C:/Users/telford.programmer/Desktop/HRIS/vite.config.*)",
+      "Bash(xargs ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

@@ -7,10 +7,11 @@ use App\Models\EmployeeChangeRequest;
 use App\Repositories\EmployeeAttachmentRepository;
 use App\Repositories\ShuttleRepository;
 use App\Services\EmployeeChangeRequestService;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\JsonResponse;
 
 class EmployeeChangeRequestController extends Controller
 {
@@ -64,7 +65,7 @@ class EmployeeChangeRequestController extends Controller
 
     // ─── Employee Submit ─────────────────────────────────────────────────────
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $request->merge([
             'old_value' => json_decode($request->old_value, true),
@@ -92,12 +93,9 @@ class EmployeeChangeRequestController extends Controller
                 fileDescription: $validated['file_description'] ?? '',
             );
 
-            return response()->json([
-                'success' => true,
-                'data'    => new ChangeRequestResource($changeRequest->load(['attachment', 'requester'])),
-            ]);
+            return back()->with('success', 'Change request submitted. Pending HR approval.');
         } catch (\RuntimeException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return back()->withErrors(['message' => $e->getMessage()]);
         }
     }
 

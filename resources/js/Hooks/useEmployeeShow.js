@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import { avatarPalette } from "@/Helpers/employee";
 
@@ -77,6 +77,11 @@ export function useEmployeeShow(employee, changeRequests = {}) {
     const [oldValueSnapshot, setOldValueSnapshot] = useState(null);
     const [pendingMap, setPendingMap] = useState(changeRequests);
 
+    // Keep pendingMap in sync when Inertia refreshes changeRequests after a submit
+    useEffect(() => {
+        setPendingMap(changeRequests);
+    }, [changeRequests]);
+
     const pal = useMemo(
         () => avatarPalette(employee.emp_id),
         [employee.emp_id],
@@ -134,6 +139,16 @@ export function useEmployeeShow(employee, changeRequests = {}) {
             setOldValueSnapshot(snapshot);
             setFormValue(snapshot);
             setModalCategory(category);
+
+            // Pre-load attachments for the picker (reuses the same lazy prop as the Files tab)
+            if (!attachmentsFetched.current) {
+                attachmentsFetched.current = true;
+                setAttachmentsLoading(true);
+                router.reload({
+                    only: ["attachments"],
+                    onFinish: () => setAttachmentsLoading(false),
+                });
+            }
         },
         [employee],
     );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { router, usePage } from "@inertiajs/react";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -12,21 +12,10 @@ import { Badge } from "@/components/ui/badge";
 
 // ─── Attachment Picker ────────────────────────────────────────────────────────
 
-function AttachmentPicker({ employid, value, onChange }) {
-    const [existing, setExisting] = useState([]);
-    const [loading, setLoading] = useState(false);
+function AttachmentPicker({ value, onChange, loading }) {
+    const { attachments: existing = [] } = usePage().props;
     const [tab, setTab] = useState("upload"); // "upload" | "existing"
     const [dragActive, setDragActive] = useState(false);
-
-    useEffect(() => {
-        setLoading(true);
-        axios
-            .get(route("change-requests.attachments.index"), {
-                params: { employid },
-            })
-            .then((res) => setExisting(res.data.data ?? []))
-            .finally(() => setLoading(false));
-    }, [employid]);
 
     const handleFile = (file) => {
         if (!file) return;
@@ -64,7 +53,7 @@ function AttachmentPicker({ employid, value, onChange }) {
                     >
                         {t === "upload"
                             ? "Upload New"
-                            : `Use Existing (${existing.length})`}
+                            : `Use Existing (${existing.length ?? 0})`}
                         {tab === t && (
                             <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground rounded-full" />
                         )}
@@ -322,6 +311,7 @@ export default function ChangeRequestModal({
     children, // the form component rendered inside
     onSuccess,
     existingRequest, // pending request for this category (if any)
+    attachmentsLoading = false,
 }) {
     const [attachment, setAttachment] = useState(null);
     const [submitting, setSubmitting] = useState(false);
@@ -332,43 +322,38 @@ export default function ChangeRequestModal({
         if (open) setAttachment(null);
     }, [open, category]);
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
         if (requiresAttachment && !attachment) {
             toast.error("Please attach a supporting document.");
             return;
         }
 
         setSubmitting(true);
-        try {
-            const formData = new FormData();
-            formData.append("employid", employid);
-            formData.append("category", category);
-            formData.append("old_value", JSON.stringify(oldValue));
-            formData.append("new_value", JSON.stringify(newValue));
 
-            if (attachment?.type === "new") {
-                formData.append("file", attachment.file);
-            } else if (attachment?.type === "existing") {
-                formData.append("attachment_id", attachment.attachmentId);
-            }
+        const formData = new FormData();
+        formData.append("employid", employid);
+        formData.append("category", category);
+        formData.append("old_value", JSON.stringify(oldValue));
+        formData.append("new_value", JSON.stringify(newValue));
 
-            const res = await axios.post(
-                route("change-requests.store"),
-                formData,
-            );
-
-            if (res.data.success) {
-                toast.success("Change request submitted. Pending HR approval.");
-                onSuccess?.(res.data.data);
-                onClose();
-            }
-        } catch (err) {
-            const msg =
-                err.response?.data?.message ?? "Failed to submit request.";
-            toast.error(msg);
-        } finally {
-            setSubmitting(false);
+        if (attachment?.type === "new") {
+            formData.append("file", attachment.file);
+        } else if (attachment?.type === "existing") {
+            formData.append("attachment_id", attachment.attachmentId);
         }
+
+        router.post(route("change-requests.store"), formData, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success("Change request submitted. Pending HR approval.");
+                onClose();
+            },
+            onError: (errors) => {
+                toast.error(errors.message ?? "Failed to submit request.");
+            },
+            onFinish: () => setSubmitting(false),
+        });
     };
 
     return (
@@ -423,9 +408,9 @@ export default function ChangeRequestModal({
                             )}
                         </div>
                         <AttachmentPicker
-                            employid={employid}
                             value={attachment}
                             onChange={setAttachment}
+                            loading={attachmentsLoading}
                         />
                     </div>
 

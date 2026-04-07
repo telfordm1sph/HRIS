@@ -891,6 +891,7 @@ export default function EmployeeShow({
                     newValue={formValue}
                     existingRequest={pendingMap[modalCategory]}
                     onSuccess={handleSuccess}
+                    attachmentsLoading={attachmentsLoading}
                 >
                     {renderForm()}
                 </ChangeRequestModal>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\EmployeeAttachmentService;
+use App\Services\EmployeeChangeRequestService;
 use App\Services\EmployeeService;
 use App\Services\ShuttleService;
 use Illuminate\Http\Request;
@@ -12,9 +13,10 @@ use Inertia\Response;
 class EmployeeController extends Controller
 {
     public function __construct(
-        protected EmployeeService           $employeeService,
-        protected ShuttleService            $shuttleService,
-        protected EmployeeAttachmentService $attachmentService,
+        protected EmployeeService              $employeeService,
+        protected ShuttleService               $shuttleService,
+        protected EmployeeAttachmentService    $attachmentService,
+        protected EmployeeChangeRequestService $changeRequestService,
     ) {}
 
     public function index(Request $request): Response
@@ -50,9 +52,10 @@ class EmployeeController extends Controller
         $isAdmin = session('emp_data.emp_id') == 0;
 
         return Inertia::render('Employee/Show', [
-            'employee'     => $result['data'],
-            'shuttles'     => $this->shuttleService->getAll(),
-            'adminLookups' => $isAdmin ? $this->employeeService->getAdminLookups() : null,
+            'employee'       => $result['data'],
+            'shuttles'       => $this->shuttleService->getAll(),
+            'adminLookups'   => $isAdmin ? $this->employeeService->getAdminLookups() : null,
+            'changeRequests' => $this->changeRequestService->getPendingMapForEmployee($employid),
 
             'attachments' => Inertia::lazy(
                 fn() => $this->attachmentService->getForEmployee($employid)

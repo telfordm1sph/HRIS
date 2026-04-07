@@ -1,12 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import SidebarLink from "@/Components/sidebar/SidebarLink";
 
-import {
-    User,
-    Users,
-    ClipboardList,
-    Upload,
-} from "lucide-react";
+import { User, Users, ClipboardList, Upload, Database } from "lucide-react";
 import Dropdown from "./DropDown";
 
 export default function NavLinks({ isSidebarOpen }) {
@@ -40,6 +35,12 @@ export default function NavLinks({ isSidebarOpen }) {
                 href={route("import.index")}
                 label="Import"
                 icon={<Upload className="w-5 h-5" />}
+                isSidebarOpen={isSidebarOpen}
+            />
+            <SidebarLink
+                href={route("lookups.index")}
+                label="Lookups"
+                icon={<Database className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
         </nav>

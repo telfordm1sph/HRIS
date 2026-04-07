@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\General\AdminController;
 use App\Http\Controllers\General\ImportController;
+use App\Http\Controllers\General\LookupController;
 use App\Http\Controllers\General\ProfileController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\AuthMiddleware;
@@ -22,6 +23,11 @@ Route::prefix($app_name)->middleware(AuthMiddleware::class)->group(function () {
     Route::post("/add-admin", [AdminController::class, 'addAdmin'])->name('addAdmin');
     Route::post("/remove-admin", [AdminController::class, 'removeAdmin'])->name('removeAdmin');
     Route::patch("/change-admin-role", [AdminController::class, 'changeAdminRole'])->name('changeAdminRole');
+
+    Route::get('/lookups',               [LookupController::class, 'index'])->name('lookups.index');
+    Route::post('/lookups/{type}',       [LookupController::class, 'store'])->name('lookups.store');
+    Route::patch('/lookups/{type}/{id}', [LookupController::class, 'update'])->name('lookups.update');
+    Route::delete('/lookups/{type}/{id}',[LookupController::class, 'destroy'])->name('lookups.destroy');
   });
 
   Route::get("/", [DashboardController::class, 'index'])->name('dashboard');
