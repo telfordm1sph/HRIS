@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\EmployeeRepository;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class EmployeeService
@@ -23,10 +24,11 @@ class EmployeeService
 
         return [
             'success' => true,
+            'message' => 'OK',
             'data'    => [
                 // 👤 Personal
                 'emp_id'                  => $employee->employid,
-                'emp_name'                => trim($employee->firstname . ' ' . $employee->middlename . ' ' . $employee->lastname),
+                'emp_name'                => trim(implode(' ', array_filter([$employee->firstname, $employee->middlename, $employee->lastname]))),
                 'emp_firstname'           => $employee->firstname,
                 'emp_middlename'          => $employee->middlename,
                 'emp_lastname'            => $employee->lastname,
@@ -168,7 +170,7 @@ class EmployeeService
         }
 
         if ($approverDetail) {
-            $fullName = trim($approverDetail->firstname . ' ' . $approverDetail->middlename . ' ' . $approverDetail->lastname);
+            $fullName = trim(implode(' ', array_filter([$approverDetail->firstname, $approverDetail->middlename, $approverDetail->lastname])));
             return $approverId . ' - ' . $fullName;
         }
 
@@ -188,23 +190,53 @@ class EmployeeService
     // ── Admin direct-write methods ────────────────────────────────────────────
 
     private const PERSONAL_FIELDS = [
-        'firstname','middlename','lastname','nickname','birthday','place_of_birth',
-        'emp_sex','email','contact_no','civil_status','religion','height','weight',
-        'blood_type','educational_attainment',
+        'firstname',
+        'middlename',
+        'lastname',
+        'nickname',
+        'birthday',
+        'place_of_birth',
+        'emp_sex',
+        'email',
+        'contact_no',
+        'civil_status',
+        'religion',
+        'height',
+        'weight',
+        'blood_type',
+        'educational_attainment',
     ];
     private const WORK_FIELDS = [
-        'company','department','job_title','prodline','station','team',
-        'empposition','empstatus','empclass','shift_type','shuttle','date_hired','date_reg',
+        'company',
+        'department',
+        'job_title',
+        'prodline',
+        'station',
+        'team',
+        'empposition',
+        'empstatus',
+        'empclass',
+        'shift_type',
+        'shuttle',
+        'date_hired',
+        'date_reg',
     ];
     private const ADDRESS_FIELDS = [
-        'house_no','brgy','city','province','perma_house_no','perma_brgy','perma_city','perma_province',
+        'house_no',
+        'brgy',
+        'city',
+        'province',
+        'perma_house_no',
+        'perma_brgy',
+        'perma_city',
+        'perma_province',
     ];
-    private const APPROVER_FIELDS = ['approver1','approver2','approver3'];
+    private const APPROVER_FIELDS = ['approver1', 'approver2', 'approver3'];
     private const FAMILY_FIELDS = [
-        'parent'  => ['parent_name','parent_bday','parent_age','parent_gender'],
-        'spouse'  => ['spouse_name','spouse_bday','spouse_age','spouse_gender'],
-        'sibling' => ['sibling_name','sibling_bday','sibling_age','sibling_gender'],
-        'child'   => ['child_name','child_bday','child_age','child_gender'],
+        'parent'  => ['parent_name', 'parent_bday', 'parent_age', 'parent_gender'],
+        'spouse'  => ['spouse_name', 'spouse_bday', 'spouse_age', 'spouse_gender'],
+        'sibling' => ['sibling_name', 'sibling_bday', 'sibling_age', 'sibling_gender'],
+        'child'   => ['child_name', 'child_bday', 'child_age', 'child_gender'],
     ];
 
     public function adminUpdateField(int $empId, string $table, string $field, mixed $value, ?string $familyType = null, ?int $rowId = null): void
@@ -221,6 +253,18 @@ class EmployeeService
     public function adminAddFamilyRow(int $empId, string $familyType, array $data): void
     {
         abort_if(!array_key_exists($familyType, self::FAMILY_FIELDS), 422, 'Unknown family type.');
+
+        $bdayKey = match ($familyType) {
+            'parent'  => 'parent_bday',
+            'spouse'  => 'spouse_bday',
+            'sibling' => 'sibling_bday',
+            'child'   => 'child_bday',
+        };
+        if (!empty($data[$bdayKey])) {
+            $ageKey = str_replace('_bday', '_age', $bdayKey);
+            $data[$ageKey] = Carbon::parse($data[$bdayKey])->age;
+        }
+
         $this->repository->addFamilyRow($familyType, $empId, $data);
     }
 
@@ -241,7 +285,14 @@ class EmployeeService
         abort_if(!$familyType || !array_key_exists($familyType, self::FAMILY_FIELDS), 422, 'Unknown family type.');
         abort_if(!in_array($field, self::FAMILY_FIELDS[$familyType]), 422, "Unknown family field: {$field}");
         abort_if(!$rowId, 422, 'row_id required for family update.');
-        $this->repository->updateFamilyRow($familyType, $rowId, $empId, $field, $value);
+
+        $payload = [$field => $value ?: null];
+        if (str_ends_with($field, '_bday') && $value) {
+            $ageField = str_replace('_bday', '_age', $field);
+            $payload[$ageField] = Carbon::parse($value)->age;
+        }
+
+        $this->repository->updateFamilyRow($familyType, $rowId, $empId, $payload);
     }
 
     public function getAuthDetail(int $employid): array
@@ -256,9 +307,10 @@ class EmployeeService
 
         return [
             'success' => true,
+            'message' => 'OK',
             'data'    => [
                 'emp_id'          => $employee->employid,
-                'emp_name'        => trim($employee->firstname . ' ' . $employee->middlename . ' ' . $employee->lastname),
+                'emp_name'        => trim(implode(' ', array_filter([$employee->firstname, $employee->middlename, $employee->lastname]))),
                 'emp_firstname'   => $employee->firstname,
                 'accstatus'       => $employee->accstatus,
                 'emp_dept_id'     => $work->department    ?? null,
@@ -280,6 +332,7 @@ class EmployeeService
 
         return [
             'success' => true,
+            'message' => 'OK',
             'data'    => [
                 'emp_id'          => $work->employid,
                 'emp_dept_id'     => $work->department,
@@ -294,9 +347,14 @@ class EmployeeService
                 'team'        => $work->teamRel->team_name                 ?? null,
                 'emp_position_id' => $work->empposition,
                 'emp_position'    => $work->empPositionRel->emp_position_name  ?? null,
-                'emp_status'      => $work->empstatus,
-                'emp_class'       => $work->empclass,
-                'shift_type'      => $work->shift_type,
+                'emp_status_id'    => $work->empstatus    ?? null,
+                'emp_status'       => $work->statusRel->status_name  ?? null,
+                'emp_class_id'     => $work->empclass     ?? null,
+                'emp_class'        => $work->classRel->class_name  ?? null,
+                'shift_type_id'    => $work->shift_type   ?? null,
+                'shift_type'       => $work->shiftRel->shift_name  ?? null,
+                'shuttle_id'       => $work->shuttle      ?? null,
+                'shuttle'          => $work->shuttleRel->shuttle_name ?? null,
                 'date_hired'      => $work->date_hired,
                 'date_reg'        => $work->date_reg,
                 'service_length'  => $work->service_length,
@@ -345,7 +403,7 @@ class EmployeeService
                 'shuttle'       => $work?->shuttleRel?->shuttle_name,
                 'date_hired'    => $work?->date_hired,
                 'date_reg'      => $work?->date_reg,
-                'service_length'=> $work?->service_length,
+                'service_length' => $work?->service_length,
 
                 // Government
                 'tin_no'        => $work?->govInfo?->tin_no,
@@ -367,7 +425,7 @@ class EmployeeService
         $result['data'] = array_map(function ($e) {
             return [
                 'employid' => $e['employid'],
-                'emp_name' => trim($e['firstname'] . ' ' . $e['middlename'] . ' ' . $e['lastname']),
+                'emp_name' => trim(implode(' ', array_filter([$e['firstname'], $e['middlename'], $e['lastname']]))),
             ];
         }, $result['data']);
 

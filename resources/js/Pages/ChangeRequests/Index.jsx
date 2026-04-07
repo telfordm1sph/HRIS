@@ -1,6 +1,8 @@
 import { Head } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/Components/ui/combobox";
+import { DatePicker } from "@/Components/ui/date-picker";
 import StatusBadge from "@/Components/ChangeRequest/StatusBadge";
 import DiffCell from "@/Components/ChangeRequest/DiffCell";
 import ActionCell from "@/Components/ChangeRequest/ActionCell";
@@ -51,19 +53,18 @@ export default function ChangeRequestsIndex({ requests, filters, categories, shu
                         </div>
 
                         {/* Category filter */}
-                        <select
+                        <Combobox
+                            options={Object.entries(categories).map(([k, v]) => ({ value: k, label: v }))}
                             value={localFilters.category ?? ""}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, category: e.target.value }));
-                                applyFilters({ category: e.target.value });
+                            onChange={(val) => {
+                                const category = val ?? "";
+                                setLocalFilters((f) => ({ ...f, category }));
+                                applyFilters({ category });
                             }}
-                            className="rounded-md border border-input bg-background px-3 py-1.5 text-[12px] font-mono"
-                        >
-                            <option value="">All Categories</option>
-                            {Object.entries(categories).map(([k, v]) => (
-                                <option key={k} value={k}>{v}</option>
-                            ))}
-                        </select>
+                            placeholder="All Categories"
+                            allowCustomValue={false}
+                            className="h-8 text-[12px] w-44"
+                        />
 
                         {/* Employee ID search */}
                         <Input
@@ -75,24 +76,26 @@ export default function ChangeRequestsIndex({ requests, filters, categories, shu
                         />
 
                         {/* Date range */}
-                        <Input
-                            type="date"
+                        <DatePicker
                             value={localFilters.date_from ?? ""}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, date_from: e.target.value }));
-                                applyFilters({ date_from: e.target.value });
+                            onChange={(val) => {
+                                const date_from = val ?? "";
+                                setLocalFilters((f) => ({ ...f, date_from }));
+                                applyFilters({ date_from });
                             }}
-                            className="w-40 text-[12px] h-8"
+                            placeholder="From date"
+                            className="w-36"
                         />
-                        <span className="text-muted-foreground/40 text-[12px]">to</span>
-                        <Input
-                            type="date"
+                        <span className="text-muted-foreground/40 text-[12px]">—</span>
+                        <DatePicker
                             value={localFilters.date_to ?? ""}
-                            onChange={(e) => {
-                                setLocalFilters((f) => ({ ...f, date_to: e.target.value }));
-                                applyFilters({ date_to: e.target.value });
+                            onChange={(val) => {
+                                const date_to = val ?? "";
+                                setLocalFilters((f) => ({ ...f, date_to }));
+                                applyFilters({ date_to });
                             }}
-                            className="w-40 text-[12px] h-8"
+                            placeholder="To date"
+                            className="w-36"
                         />
                     </div>
 

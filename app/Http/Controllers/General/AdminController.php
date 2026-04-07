@@ -3,22 +3,17 @@
 namespace App\Http\Controllers\General;
 
 use App\Http\Controllers\Controller;
+use App\Services\AdminService;
 use App\Services\DataTableService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class AdminController extends Controller
 {
-    protected $datatable;
-    protected $datatable1;
-
-    public function __construct(DataTableService $datatable)
-    {
-        $this->datatable = $datatable;
-    }
-
+    public function __construct(
+        protected DataTableService $datatable,
+        protected AdminService     $adminService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -31,22 +26,15 @@ class AdminController extends Controller
             ]
         );
 
-        // FOR CSV EXPORTING
         if ($result instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
             return $result;
         }
 
         return Inertia::render('Admin/Admin', [
-            'tableData' => $result['data'],
+            'tableData'    => $result['data'],
             'tableFilters' => $request->only([
-                'search',
-                'perPage',
-                'sortBy',
-                'sortDirection',
-                'start',
-                'end',
-                'dropdownSearchValue',
-                'dropdownFields',
+                'search', 'perPage', 'sortBy', 'sortDirection',
+                'start', 'end', 'dropdownSearchValue', 'dropdownFields',
             ]),
         ]);
     }
@@ -59,84 +47,57 @@ class AdminController extends Controller
             'employee_masterlist',
             [
                 'conditions' => function ($query) {
-                    return $query
-                        ->where('ACCSTATUS', 1)
-                        ->whereNot('EMPLOYID', 0);
+                    return $query->where('ACCSTATUS', 1)->whereNot('EMPLOYID', 0);
                 },
-
                 'searchColumns' => ['EMPNAME', 'EMPLOYID', 'JOB_TITLE', 'DEPARTMENT'],
             ]
         );
 
-        // FOR CSV EXPORTING
         if ($result instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
             return $result;
         }
 
         return Inertia::render('Admin/NewAdmin', [
-            'tableData' => $result['data'],
+            'tableData'    => $result['data'],
             'tableFilters' => $request->only([
-                'search',
-                'perPage',
-                'sortBy',
-                'sortDirection',
-                'start',
-                'end',
-                'dropdownSearchValue',
-                'dropdownFields',
+                'search', 'perPage', 'sortBy', 'sortDirection',
+                'start', 'end', 'dropdownSearchValue', 'dropdownFields',
             ]),
         ]);
     }
 
     public function addAdmin(Request $request)
     {
-
-        // dd($request->all());
-        $checkIfExists = DB::table('admin')
-            ->where('emp_id', $request->input('id'))
-            ->exists();
-
-        if (!$checkIfExists) {
-            DB::table('admin')
-                ->insert([
-                    'emp_id' => $request->input('id'),
-                    'emp_name' => $request->input('name'),
-                    'emp_role' => $request->input('role'),
-                    'last_updated_by' => session('emp_data')['emp_id'],
-                ]);
-        }
+        $this->adminService->add(
+            empId:     (int) $request->input('id'),
+            name:      $request->input('name'),
+            role:      $request->input('role'),
+            updatedBy: (int) session('emp_data.emp_id'),
+        );
 
         return back()->with('success', 'Admin added successfully.');
     }
 
     public function removeAdmin(Request $request)
     {
-        DB::table('admin')
-            ->where('emp_id', $request->input('id'))
-            ->delete();
+        $this->adminService->remove((int) $request->input('id'));
 
         return back()->with('success', 'Admin removed successfully.');
     }
 
     public function changeAdminRole(Request $request)
     {
-        $id = $request->input('id');
-        $role = $request->input('role');
+        $empId = (int) $request->input('id');
+        $role  = $request->input('role');
 
-        DB::table('admin')
-            ->where('emp_id', $id)
-            ->update([
-                'emp_role' => $role,
-                'last_updated_by' => session('emp_data')['emp_id'],
-            ]);
+        $this->adminService->changeRole($empId, $role, (int) session('emp_data.emp_id'));
 
-        // Update session data if the current user is the one whose role is being changed
-        if (session('emp_data')['emp_id'] == $id) {
+        // If the current user changed their own role, update session immediately
+        if ((int) session('emp_data.emp_id') === $empId) {
             $empData = session('emp_data');
             $empData['emp_system_role'] = $role;
             session()->put('emp_data', $empData);
         }
-
 
         return back()->with('success', 'Admin role changed successfully.');
     }

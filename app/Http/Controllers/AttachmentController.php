@@ -2,28 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EmployeeAttachment;
+use App\Services\EmployeeAttachmentService;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
 
 class AttachmentController extends Controller
 {
-    public function view($id)
+    public function __construct(
+        protected EmployeeAttachmentService $service
+    ) {}
+
+    public function view(int $id)
     {
-        $attachment = EmployeeAttachment::findOrFail($id);
+        $attachment = $this->service->findForView($id);
 
-        $path = $attachment->file_path;
+        if (!$attachment) {
+            abort(404);
+        }
 
-        if (!Storage::disk('private')->exists($path)) {
+        if (!Storage::disk('private')->exists($attachment['file_path'])) {
             abort(404);
         }
 
         return response()->file(
-            Storage::disk('private')->path($path),
+            Storage::disk('private')->path($attachment['file_path']),
             [
-                'Content-Type' => $attachment->mime_type,
-                'Content-Disposition' => 'inline; filename="' . $attachment->original_name . '"',
+                'Content-Type'        => $attachment['mime_type'],
+                'Content-Disposition' => 'inline; filename="' . $attachment['original_name'] . '"',
             ]
         );
     }

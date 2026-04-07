@@ -6,9 +6,15 @@ export function useChangeRequests(filters) {
     const [localFilters, setLocalFilters] = useState(filters);
 
     const applyFilters = (overrides = {}) => {
+        const merged = {
+            ...localFilters,
+            ...overrides,
+            // preserve explicit page override; otherwise reset to 1 on filter change
+            page: overrides.page ?? 1,
+        };
         router.get(
             route("change-requests.index"),
-            { ...localFilters, ...overrides, page: 1 },
+            { filters: btoa(JSON.stringify(merged)) },
             { preserveScroll: true, replace: true }
         );
     };

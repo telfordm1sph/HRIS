@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ChangeRequestResource;
 use App\Models\EmployeeChangeRequest;
-use App\Repositories\EmployeeAttachmentRepository;
 use App\Repositories\ShuttleRepository;
+use App\Services\EmployeeAttachmentService;
 use App\Services\EmployeeChangeRequestService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,14 +17,25 @@ class EmployeeChangeRequestController extends Controller
 {
     public function __construct(
         protected EmployeeChangeRequestService $service,
-        protected ShuttleRepository $shuttleRepository,
+        protected EmployeeAttachmentService    $attachmentService,
+        protected ShuttleRepository            $shuttleRepository,
     ) {}
 
     // ─── HR Table Page ───────────────────────────────────────────────────────
 
     public function index(Request $request): Response
     {
-        $filters = $request->only(['status', 'category', 'date_from', 'date_to', 'employid', 'per_page']);
+        $encoded = $request->query('filters', '');
+        $decoded = [];
+        if ($encoded) {
+            $json    = base64_decode($encoded, strict: true);
+            $decoded = ($json !== false) ? (json_decode($json, associative: true) ?? []) : [];
+        }
+
+        $filters = array_intersect_key(
+            array_map('strval', $decoded),
+            array_flip(['status', 'category', 'date_from', 'date_to', 'employid', 'per_page', 'page'])
+        );
         $filters['status'] ??= 'pending';
 
         return Inertia::render('ChangeRequests/Index', [
@@ -109,24 +120,14 @@ class EmployeeChangeRequestController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $attachment = app(EmployeeAttachmentRepository::class)->store(
+        $attachment = $this->attachmentService->store(
             employid: $validated['employid'],
             uploadedBy: $validated['employid'],
             file: $request->file('file'),
             description: $validated['description'] ?? '',
         );
 
-        return response()->json([
-            'success' => true,
-            'data'    => [
-                'id'            => $attachment->id,
-                'original_name' => $attachment->original_name,
-                'description'   => $attachment->description,
-                'size'          => $attachment->size_formatted,
-                'is_image'      => $attachment->is_image,
-                'url'           => $attachment->url,
-            ],
-        ]);
+        return response()->json(['success' => true, 'data' => $attachment]);
     }
 
     public function listAttachments(Request $request): JsonResponse

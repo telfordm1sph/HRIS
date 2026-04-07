@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AdminUpdateFieldRequest;
 use App\Services\EmployeeAttachmentService;
 use App\Services\EmployeeChangeRequestService;
 use App\Services\EmployeeService;
@@ -49,7 +50,7 @@ class EmployeeController extends Controller
             abort(404, 'Employee not found.');
         }
 
-        $isAdmin = session('emp_data.emp_id') == 0;
+        $isAdmin = (int) session('emp_data.emp_id') === 0;
 
         return Inertia::render('Employee/Show', [
             'employee'       => $result['data'],
@@ -77,10 +78,8 @@ class EmployeeController extends Controller
         ]);
     }
 
-    public function adminUpdate(string $employid, Request $request)
+    public function adminUpdate(string $employid, AdminUpdateFieldRequest $request)
     {
-        if (session('emp_data.emp_id') != 0) abort(403);
-
         $this->employeeService->adminUpdateField(
             $this->decodeEmployid($employid),
             $request->input('table', 'personal'),
@@ -95,7 +94,7 @@ class EmployeeController extends Controller
 
     public function adminFamilyAdd(string $employid, Request $request)
     {
-        if (session('emp_data.emp_id') != 0) abort(403);
+        if ((int) session('emp_data.emp_id') !== 0) abort(403);
 
         $this->employeeService->adminAddFamilyRow(
             $this->decodeEmployid($employid),
@@ -108,7 +107,7 @@ class EmployeeController extends Controller
 
     public function adminFamilyDelete(string $employid, int $rowId, Request $request)
     {
-        if (session('emp_data.emp_id') != 0) abort(403);
+        if ((int) session('emp_data.emp_id') !== 0) abort(403);
 
         $this->employeeService->adminDeleteFamilyRow(
             $this->decodeEmployid($employid),
