@@ -9,6 +9,7 @@ use App\Models\EmployeeClass;
 use App\Models\EmployeeCompany;
 use App\Models\EmployeeDepartment;
 use App\Models\EmployeeDetail;
+use App\Models\EmployeeGovInfo;
 use App\Models\EmployeeParent;
 use App\Models\EmployeePosition;
 use App\Models\EmployeeShift;
@@ -17,10 +18,12 @@ use App\Models\EmployeeSpouse;
 use App\Models\EmployeeStatus;
 use App\Models\EmployeeWorkDetail;
 use App\Models\JobTitle;
+use App\Models\MasterlistLogs;
 use App\Models\ProdLine;
 use App\Models\Shuttle;
 use App\Models\Station;
 use App\Models\Team;
+use Illuminate\Support\Collection;
 
 class EmployeeRepository
 {
@@ -167,40 +170,37 @@ class EmployeeRepository
 
     public function updatePersonalField(int $empId, string $field, mixed $value): void
     {
-        EmployeeDetail::on('masterlist')
-            ->where('employid', $empId)
-            ->update([$field => $value ?: null]);
+        EmployeeDetail::on('masterlist')->where('employid', $empId)->first()
+            ?->fill([$field => $value ?: null])->save();
     }
 
     public function updateWorkField(int $empId, string $field, mixed $value): void
     {
-        EmployeeWorkDetail::on('masterlist')
-            ->where('employid', $empId)
-            ->update([$field => $value ?: null]);
+        EmployeeWorkDetail::on('masterlist')->where('employid', $empId)->first()
+            ?->fill([$field => $value ?: null])->save();
     }
 
     public function updateAddressField(int $empId, string $field, mixed $value): void
     {
-        EmployeeAddress::on('masterlist')
-            ->where('employid', $empId)
-            ->update([$field => $value ?: null]);
+        EmployeeAddress::on('masterlist')->where('employid', $empId)->first()
+            ?->fill([$field => $value ?: null])->save();
     }
 
     public function updateApproverField(int $empId, string $field, mixed $value): void
     {
-        EmployeeApprover::on('masterlist')
-            ->where('employid', $empId)
-            ->update([$field => $value ?: null]);
+        EmployeeApprover::on('masterlist')->where('employid', $empId)->first()
+            ?->fill([$field => $value ?: null])->save();
     }
 
     public function updateFamilyRow(string $familyType, int $rowId, int $empId, array $payload): void
     {
-        match ($familyType) {
-            'parent'  => EmployeeParent::on('masterlist')->where('id', $rowId)->where('employid', $empId)->update($payload),
-            'spouse'  => EmployeeSpouse::on('masterlist')->where('id', $rowId)->where('employid', $empId)->update($payload),
-            'sibling' => EmployeeSibling::on('masterlist')->where('id', $rowId)->where('employid', $empId)->update($payload),
-            'child'   => EmployeeChild::on('masterlist')->where('id', $rowId)->where('employid', $empId)->update($payload),
+        $model = match ($familyType) {
+            'parent'  => EmployeeParent::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
+            'spouse'  => EmployeeSpouse::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
+            'sibling' => EmployeeSibling::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
+            'child'   => EmployeeChild::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
         };
+        $model?->fill($payload)->save();
     }
 
     public function addFamilyRow(string $familyType, int $empId, array $data): void
@@ -217,12 +217,156 @@ class EmployeeRepository
 
     public function deleteFamilyRow(string $familyType, int $rowId, int $empId): void
     {
-        match ($familyType) {
-            'parent'  => EmployeeParent::on('masterlist')->where('id', $rowId)->where('employid', $empId)->delete(),
-            'spouse'  => EmployeeSpouse::on('masterlist')->where('id', $rowId)->where('employid', $empId)->delete(),
-            'sibling' => EmployeeSibling::on('masterlist')->where('id', $rowId)->where('employid', $empId)->delete(),
-            'child'   => EmployeeChild::on('masterlist')->where('id', $rowId)->where('employid', $empId)->delete(),
+        $model = match ($familyType) {
+            'parent'  => EmployeeParent::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
+            'spouse'  => EmployeeSpouse::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
+            'sibling' => EmployeeSibling::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
+            'child'   => EmployeeChild::on('masterlist')->where('id', $rowId)->where('employid', $empId)->first(),
         };
+        $model?->delete();
+    }
+
+    public function getActivityLogs(int $empId, int $page): array
+    {
+        $relatedIds = [
+            EmployeeWorkDetail::class => EmployeeWorkDetail::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeAddress::class    => EmployeeAddress::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeApprover::class   => EmployeeApprover::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeGovInfo::class    => EmployeeGovInfo::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeParent::class     => EmployeeParent::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeSpouse::class     => EmployeeSpouse::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeSibling::class    => EmployeeSibling::on('masterlist')->where('employid', $empId)->pluck('id'),
+            EmployeeChild::class      => EmployeeChild::on('masterlist')->where('employid', $empId)->pluck('id'),
+        ];
+
+        $paginated = MasterlistLogs::on('masterlist')
+            ->where(function ($q) use ($empId, $relatedIds) {
+                $q->where('related_id', $empId)
+                  ->orWhere(function ($q2) use ($empId) {
+                      $q2->where('loggable_type', EmployeeDetail::class)
+                         ->where('loggable_id', $empId);
+                  });
+
+                foreach ($relatedIds as $type => $ids) {
+                    if ($ids->isNotEmpty()) {
+                        $q->orWhere(function ($q2) use ($type, $ids) {
+                            $q2->where('loggable_type', $type)
+                               ->whereIn('loggable_id', $ids);
+                        });
+                    }
+                }
+            })
+            ->orderBy('action_at', 'desc')
+            ->paginate(5, ['*'], 'page', $page);
+
+        return [
+            'items'        => $this->resolveLogValues($paginated->getCollection()),
+            'current_page' => $paginated->currentPage(),
+            'last_page'    => $paginated->lastPage(),
+            'total'        => $paginated->total(),
+            'has_more'     => $paginated->hasMorePages(),
+        ];
+    }
+
+    private function resolveLogValues(Collection $logs): Collection
+    {
+        // FK fields → [model, label column]
+        $fkMap = [
+            'company'     => [EmployeeCompany::class,    'company_name'],
+            'department'  => [EmployeeDepartment::class, 'dept_name'],
+            'job_title'   => [JobTitle::class,           'position'],
+            'prodline'    => [ProdLine::class,           'pl_name'],
+            'station'     => [Station::class,            'station_name'],
+            'team'        => [Team::class,               'team_name'],
+            'empposition' => [EmployeePosition::class,   'emp_position_name'],
+            'empstatus'   => [EmployeeStatus::class,     'status_name'],
+            'empclass'    => [EmployeeClass::class,      'class_name'],
+            'shift_type'  => [EmployeeShift::class,      'shift_name'],
+            'shuttle'     => [Shuttle::class,            'shuttle_name'],
+        ];
+
+        $staticMap = [
+            'emp_sex'   => [1 => 'Male',   2 => 'Female'],
+            'accstatus' => [1 => 'Active', 2 => 'Inactive'],
+        ];
+
+        $approverFields = ['approver1', 'approver2', 'approver3'];
+
+        // Collect unique IDs per FK field across all log entries
+        $fieldIds    = array_fill_keys(array_keys($fkMap), []);
+        $approverIds = [];
+
+        foreach ($logs as $log) {
+            $allValues = array_merge($log->old_values ?? [], $log->new_values ?? []);
+
+            foreach ($fkMap as $field => $_) {
+                if (isset($allValues[$field]) && is_numeric($allValues[$field])) {
+                    $fieldIds[$field][] = (int) $allValues[$field];
+                }
+            }
+            foreach ($approverFields as $field) {
+                if (isset($allValues[$field]) && is_numeric($allValues[$field])) {
+                    $approverIds[] = (int) $allValues[$field];
+                }
+            }
+        }
+
+        // Batch-load only the lookup tables that are actually needed
+        $lookups = [];
+        foreach ($fkMap as $field => [$model, $labelCol]) {
+            $ids = array_values(array_unique(array_filter($fieldIds[$field])));
+            $lookups[$field] = $ids
+                ? $model::on('masterlist')->whereIn('id', $ids)->pluck($labelCol, 'id')
+                : collect();
+        }
+
+        // Batch-load approver names
+        $approverNames = collect();
+        $uniqueApproverIds = array_values(array_unique(array_filter($approverIds)));
+        if ($uniqueApproverIds) {
+            $approverNames = EmployeeDetail::on('masterlist')
+                ->whereIn('employid', $uniqueApproverIds)
+                ->get(['employid', 'firstname', 'middlename', 'lastname'])
+                ->mapWithKeys(fn($e) => [
+                    $e->employid => trim(implode(' ', array_filter([
+                        $e->firstname, $e->middlename, $e->lastname,
+                    ]))),
+                ]);
+        }
+
+        $resolve = function (?array $values) use ($fkMap, $staticMap, $approverFields, $lookups, $approverNames): ?array {
+            if ($values === null) return null;
+
+            foreach ($values as $field => &$val) {
+                if (isset($fkMap[$field]) && is_numeric($val)) {
+                    $val = $lookups[$field]->get((int) $val, $val);
+                } elseif (isset($staticMap[$field])) {
+                    $val = $staticMap[$field][$val] ?? $val;
+                } elseif (in_array($field, $approverFields) && is_numeric($val)) {
+                    $val = $approverNames->get((int) $val, $val);
+                }
+            }
+
+            return $values;
+        };
+
+        return $logs->map(function ($log) use ($resolve) {
+            $log->old_values = $resolve($log->old_values);
+            $log->new_values = $resolve($log->new_values);
+            return $log;
+        });
+    }
+
+    public function getEmployeeNames(array $employids): Collection
+    {
+        if (empty($employids)) {
+            return collect();
+        }
+
+        return EmployeeDetail::on('masterlist')
+            ->whereIn('employid', $employids)
+            ->get(['employid', 'firstname', 'middlename', 'lastname'])
+            ->keyBy('employid');
     }
 
     public function getActiveEmployeeList(array $params = []): array

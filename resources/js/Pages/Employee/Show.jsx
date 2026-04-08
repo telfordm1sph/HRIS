@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import AdminEditableField from "@/Components/Employee/AdminEditableField";
 import AdminFamilyTable from "@/Components/Employee/AdminFamilyTable";
 import AdminApproverCard from "@/Components/Employee/AdminApproverCard";
 import FilesTab from "@/Components/Employee/FilesTab";
+import ActivityLogModal from "@/Components/Employee/ActivityLogModal";
 import { useEmployeeShow } from "@/Hooks/useEmployeeShow";
 
 const EmployeeCombobox = memo(Combobox);
@@ -45,7 +46,10 @@ const CIVIL_STATUS_OPTIONS = [
     { value: "Separated", label: "Separated" },
     { value: "Divorced", label: "Divorced" },
 ];
-
+const ACCOUNT_STATUS_OPTIONS = [
+    { value: 1, label: "Active" },
+    { value: 2, label: "Inactive" },
+];
 // ─── Pending badge shown under a section title ────────────────────────────────
 
 function PendingBadge({ request }) {
@@ -102,6 +106,8 @@ export default function EmployeeShow({
 
     // base64-encoded employid for admin update route
     const encodedId = btoa(String(employee.emp_id));
+
+    const [historyOpen, setHistoryOpen] = useState(false);
 
     // Shorthand for admin editable field
     const AField = ({
@@ -236,15 +242,21 @@ export default function EmployeeShow({
                                 Admin
                             </span>
                         )}
+                        <button
+                            onClick={() => setHistoryOpen(true)}
+                            className="text-[11px] font-mono font-medium px-2.5 py-0.5 rounded border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1.5"
+                        >
+                            <span>🕐</span> History
+                        </button>
                         <Badge
                             variant={
-                                employee.accstatus == 1
+                                employee.accstatus_id == 1
                                     ? "default"
                                     : "destructive"
                             }
                             className="text-[10px] uppercase tracking-widest font-mono px-2"
                         >
-                            {employee.accstatus == 1 ? "Active" : "Inactive"}
+                            {employee.accstatus_id == 1 ? "Active" : "Inactive"}
                         </Badge>
                     </div>
                 </div>
@@ -438,6 +450,13 @@ export default function EmployeeShow({
                                 <Field
                                     label="Shuttle"
                                     value={employee.shuttle}
+                                />
+                                <AField
+                                    label="Account Status"
+                                    value={employee.accstatus}
+                                    fieldKey="accstatus"
+                                    idValue={employee.accstatus_id}
+                                    options={ACCOUNT_STATUS_OPTIONS}
                                 />
                             </div>
 
@@ -879,6 +898,14 @@ export default function EmployeeShow({
                     )}
                 </div>
             </div>
+
+            {/* ── Activity History Modal ── */}
+            {historyOpen && (
+                <ActivityLogModal
+                    employid={encodedId}
+                    onClose={() => setHistoryOpen(false)}
+                />
+            )}
 
             {/* ── Change Request Modal (non-admin only) ── */}
             {!is_admin && modalCategory && (

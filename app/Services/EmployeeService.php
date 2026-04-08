@@ -44,8 +44,8 @@ class EmployeeService
                 'weight'                  => $employee->weight,
                 'blood_type'              => $employee->blood_type,
                 'educational_attainment'  => $employee->educational_attainment,
-                'accstatus'               => $employee->accstatus,
-
+                'accstatus_id'            => $employee->accstatus,
+                'accstatus'               => $employee->accstatus == 1 ? 'Active' : ($employee->accstatus == 2 ? 'Inactive' : 'Unknown'),
                 // 🏠 Address
                 'address' => $employee->address?->first() ? [
                     'house_no'       => $employee->address->first()->house_no,
@@ -205,6 +205,7 @@ class EmployeeService
         'weight',
         'blood_type',
         'educational_attainment',
+        'accstatus',
     ];
     private const WORK_FIELDS = [
         'company',
@@ -431,6 +432,48 @@ class EmployeeService
 
         return $result;
     }
+    public function getActivityHistory(int $empId, int $page): array
+    {
+        $result = $this->repository->getActivityLogs($empId, $page);
+
+        $actorIds = $result['items']->pluck('action_by')->filter()->unique()->values()->toArray();
+        $names    = $this->repository->getEmployeeNames($actorIds);
+
+        $data = $result['items']->map(function ($log) use ($names) {
+            $id = $log->action_by;
+
+            $actorName = match (true) {
+                $id === 0        => 'System Admin',
+                $names->has($id) => trim(implode(' ', array_filter([
+                    $names[$id]->firstname,
+                    $names[$id]->middlename,
+                    $names[$id]->lastname,
+                ]))),
+                default          => "Employee #{$id}",
+            };
+
+            return [
+                'id'             => $log->id,
+                'action_type'    => $log->action_type,
+                'section'        => class_basename($log->loggable_type),
+                'action_by_id'   => $id,
+                'action_by_name' => $actorName,
+                'action_at'      => $log->action_at?->format('Y-m-d H:i:s'),
+                'old_values'     => $log->old_values,
+                'new_values'     => $log->new_values,
+                'remarks'        => $log->remarks,
+            ];
+        });
+
+        return [
+            'data'         => $data->values()->toArray(),
+            'current_page' => $result['current_page'],
+            'last_page'    => $result['last_page'],
+            'total'        => $result['total'],
+            'has_more'     => $result['has_more'],
+        ];
+    }
+
     private function notFound(): array
     {
         return [

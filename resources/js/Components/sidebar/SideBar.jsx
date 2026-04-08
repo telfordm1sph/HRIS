@@ -198,7 +198,7 @@ export default function Sidebar() {
                     {isAdmin && (
                         <div
                             className={cn(
-                                "border-t border-zinc-800/60 p-3",
+                                "p-3",
                                 !isSidebarOpen && "flex justify-center",
                             )}
                         >

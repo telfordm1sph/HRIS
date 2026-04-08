@@ -78,6 +78,16 @@ class EmployeeController extends Controller
         ]);
     }
 
+    public function history(string $employid, Request $request)
+    {
+        $empId = $this->decodeEmployid($employid);
+        abort_if(!$empId, 404);
+
+        return response()->json(
+            $this->employeeService->getActivityHistory($empId, $request->integer('page', 1))
+        );
+    }
+
     public function adminUpdate(string $employid, AdminUpdateFieldRequest $request)
     {
         $this->employeeService->adminUpdateField(

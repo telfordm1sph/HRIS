@@ -14,6 +14,9 @@ Route::prefix($app_name)->group(function () {
     Route::get('/employees/{employid}', [EmployeeController::class, 'show'])
         ->name('employees.show');
 
+    Route::get('/employees/{employid}/history', [EmployeeController::class, 'history'])
+        ->name('employees.history');
+
     Route::patch('/employees/{employid}/admin-update', [EmployeeController::class, 'adminUpdate'])
         ->name('employees.admin-update');
 
