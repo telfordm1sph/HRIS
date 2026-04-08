@@ -31,6 +31,7 @@ import AdminApproverCard from "@/Components/Employee/AdminApproverCard";
 import FilesTab from "@/Components/Employee/FilesTab";
 import ActivityLogModal from "@/Components/Employee/ActivityLogModal";
 import { useEmployeeShow } from "@/Hooks/useEmployeeShow";
+import { Clock, ClockIcon } from "lucide-react";
 
 const EmployeeCombobox = memo(Combobox);
 
@@ -220,7 +221,7 @@ export default function EmployeeShow({
 
             <div className="min-h-screen bg-background">
                 {/* ── Sticky Top Bar ──────────────────────────────────── */}
-                <div className="border-b border-border/50 bg-background/90 backdrop-blur-md sticky top-0 z-10">
+                <div className="border-b border-border/50 bg-background/90 backdrop-blur-md">
                     <div className="max-w-5xl mx-auto px-6 py-2.5 flex items-center gap-3">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 font-mono whitespace-nowrap">
                             Active Employee
@@ -246,7 +247,10 @@ export default function EmployeeShow({
                             onClick={() => setHistoryOpen(true)}
                             className="text-[11px] font-mono font-medium px-2.5 py-0.5 rounded border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1.5"
                         >
-                            <span>🕐</span> History
+                            <span>
+                                <ClockIcon className="w-3.5 h-3.5" />
+                            </span>{" "}
+                            History
                         </button>
                         <Badge
                             variant={

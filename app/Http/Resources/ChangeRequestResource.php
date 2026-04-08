@@ -39,6 +39,7 @@ class ChangeRequestResource extends JsonResource
                 'original_name' => $this->attachment->original_name,
                 'description'   => $this->attachment->description,
                 'size'          => $this->attachment->size_formatted,
+                'mime_type'     => $this->attachment->mime_type,
                 'is_image'      => $this->attachment->is_image,
                 'url'           => $this->attachment->url,
             ] : null,

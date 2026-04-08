@@ -6,6 +6,7 @@ import { DatePicker } from "@/Components/ui/date-picker";
 import StatusBadge from "@/Components/ChangeRequest/StatusBadge";
 import DiffCell from "@/Components/ChangeRequest/DiffCell";
 import ActionCell from "@/Components/ChangeRequest/ActionCell";
+import AttachmentCell from "@/Components/ChangeRequest/AttachmentCell";
 import { useChangeRequests } from "@/Hooks/useChangeRequests";
 
 export default function ChangeRequestsIndex({ requests, filters, categories, shuttles = [] }) {
@@ -134,21 +135,7 @@ export default function ChangeRequestsIndex({ requests, filters, categories, shu
                                                 <DiffCell oldValue={req.old_value} newValue={req.new_value} category={req.category} shuttles={shuttles} />
                                             </td>
                                             <td className="px-4 py-3">
-                                                {req.attachment ? (
-                                                    <a
-                                                        href={req.attachment.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-1.5 text-[12px] text-blue-600 dark:text-blue-400 hover:underline"
-                                                    >
-                                                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                                        </svg>
-                                                        <span className="max-w-[120px] truncate">{req.attachment.original_name}</span>
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-muted-foreground/30 text-[12px]">—</span>
-                                                )}
+                                                <AttachmentCell attachment={req.attachment} />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <p className="text-[12.5px] text-foreground/80">{req.requested_by?.name}</p>
