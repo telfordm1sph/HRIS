@@ -63,6 +63,7 @@ class EmployeeRepository
     public function getWorkDetailByEmployid(int $employid)
     {
         return EmployeeWorkDetail::with([
+            'employee:employid,accstatus',
             'companyRel',
             'departmentRel',
             'jobTitleRel',
@@ -96,17 +97,17 @@ class EmployeeRepository
             'workDetail.shuttleRel',
             'workDetail.govInfo',
         ])
-        ->where('accstatus', 1)
-        ->where('employid', '!=', 0)
-        ->whereRaw("CAST(employid AS CHAR) NOT LIKE '5%'");
+            ->where('accstatus', 1)
+            ->where('employid', '!=', 0)
+            ->whereRaw("CAST(employid AS CHAR) NOT LIKE '5%'");
 
         if (!empty($params['search'])) {
             $s = $params['search'];
             $query->where(function ($q) use ($s) {
                 $q->where('employid', 'like', "%{$s}%")
-                  ->orWhere('firstname', 'like', "%{$s}%")
-                  ->orWhere('lastname', 'like', "%{$s}%")
-                  ->orWhere('middlename', 'like', "%{$s}%");
+                    ->orWhere('firstname', 'like', "%{$s}%")
+                    ->orWhere('lastname', 'like', "%{$s}%")
+                    ->orWhere('middlename', 'like', "%{$s}%");
             });
         }
 
@@ -242,16 +243,16 @@ class EmployeeRepository
         $paginated = MasterlistLogs::on('masterlist')
             ->where(function ($q) use ($empId, $relatedIds) {
                 $q->where('related_id', $empId)
-                  ->orWhere(function ($q2) use ($empId) {
-                      $q2->where('loggable_type', EmployeeDetail::class)
-                         ->where('loggable_id', $empId);
-                  });
+                    ->orWhere(function ($q2) use ($empId) {
+                        $q2->where('loggable_type', EmployeeDetail::class)
+                            ->where('loggable_id', $empId);
+                    });
 
                 foreach ($relatedIds as $type => $ids) {
                     if ($ids->isNotEmpty()) {
                         $q->orWhere(function ($q2) use ($type, $ids) {
                             $q2->where('loggable_type', $type)
-                               ->whereIn('loggable_id', $ids);
+                                ->whereIn('loggable_id', $ids);
                         });
                     }
                 }
@@ -329,7 +330,9 @@ class EmployeeRepository
                 ->get(['employid', 'firstname', 'middlename', 'lastname'])
                 ->mapWithKeys(fn($e) => [
                     $e->employid => trim(implode(' ', array_filter([
-                        $e->firstname, $e->middlename, $e->lastname,
+                        $e->firstname,
+                        $e->middlename,
+                        $e->lastname,
                     ]))),
                 ]);
         }
@@ -401,5 +404,42 @@ class EmployeeRepository
             'per_page' => $paginated->perPage(),
             'total' => $paginated->total(),
         ];
+    }
+    public function getDirectReports(int $empId): Collection
+    {
+        return EmployeeDetail::with([
+            'workDetail.prodLineRel',
+            'workDetail.departmentRel',
+            'workDetail.stationRel',
+        ])
+            ->where('accstatus', 1)
+            ->where('employid', '!=', 0)
+            ->whereHas('workDetail.approver', function ($q) use ($empId) {
+                $q->where('approver1', $empId)
+                    ->orWhere('approver2', $empId)
+                    ->orWhere('approver3', $empId);
+            })
+            ->orderBy('firstname')
+            ->get();
+    }
+
+    public function getOperationDirector(): ?EmployeeDetail
+    {
+        return EmployeeDetail::with('workDetail')
+            ->whereHas('workDetail', fn($q) => $q->where('empposition', 6))
+            ->first();
+    }
+
+    public function getBulkStaffInfo(array $empNos): Collection
+    {
+        return EmployeeDetail::with([
+            'workDetail.departmentRel',
+            'workDetail.prodLineRel',
+            'workDetail.stationRel',
+            'workDetail.teamRel',
+            'workDetail.shiftRel',
+        ])
+            ->whereIn('employid', $empNos)
+            ->get(['employid', 'firstname', 'middlename', 'lastname']);
     }
 }

@@ -77,7 +77,6 @@ class EmployeeController extends Controller
             }),
         ]);
     }
-
     public function history(string $employid, Request $request)
     {
         $empId = $this->decodeEmployid($employid);

@@ -92,7 +92,9 @@ export function useEmployeeShow(employee, changeRequests = {}) {
             new Promise((resolve) => {
                 router.reload({
                     only: ["activeEmployees"],
-                    data: { q: btoa(JSON.stringify({ search, page, per_page: 50 })) },
+                    data: {
+                        q: btoa(JSON.stringify({ search, page, per_page: 50 })),
+                    },
                     onSuccess: (pg) => {
                         const result = pg.props.activeEmployees;
                         resolve({
@@ -126,9 +128,12 @@ export function useEmployeeShow(employee, changeRequests = {}) {
     const handleEmployeeChange = useCallback(
         (employid) => {
             if (!employid || employid === employee.emp_id) return;
-            router.visit(route("employees.show", { employid: btoa(employid) }), {
-                preserveScroll: false,
-            });
+            router.visit(
+                route("employees.show", { employid: btoa(employid) }),
+                {
+                    preserveScroll: false,
+                },
+            );
         },
         [employee.emp_id],
     );

@@ -28,7 +28,11 @@ class EmployeeService
             'data'    => [
                 // 👤 Personal
                 'emp_id'                  => $employee->employid,
-                'emp_name'                => trim(implode(' ', array_filter([$employee->firstname, $employee->middlename, $employee->lastname]))),
+                'emp_name' => trim(implode('', array_filter([
+                    $employee->lastname ? $employee->lastname . ', ' : '',
+                    $employee->firstname ?? '',
+                    $employee->middlename ? ' ' . strtoupper(substr($employee->middlename, 0, 1)) . '.' : ''
+                ]))),
                 'emp_firstname'           => $employee->firstname,
                 'emp_middlename'          => $employee->middlename,
                 'emp_lastname'            => $employee->lastname,
@@ -335,6 +339,7 @@ class EmployeeService
             'success' => true,
             'message' => 'OK',
             'data'    => [
+                'accstatus'        => $work->accstatus ?? null,
                 'emp_id'          => $work->employid,
                 'emp_dept_id'     => $work->department,
                 'emp_dept'        => $work->departmentRel->dept_name          ?? null,
@@ -344,6 +349,8 @@ class EmployeeService
                 'emp_prodline'    => $work->prodLineRel->pl_name               ?? null,
                 'emp_station_id'  => $work->station,
                 'emp_station'     => $work->stationRel->station_name           ?? null,
+                'company_id'      => $work->company,
+                'company'         => $work->companyRel->company_name           ?? null,
                 'team_id'     => $work->team,
                 'team'        => $work->teamRel->team_name                 ?? null,
                 'emp_position_id' => $work->empposition,
@@ -426,7 +433,11 @@ class EmployeeService
         $result['data'] = array_map(function ($e) {
             return [
                 'employid' => $e['employid'],
-                'emp_name' => trim(implode(' ', array_filter([$e['firstname'], $e['middlename'], $e['lastname']]))),
+                'emp_name' => trim(implode('', array_filter([
+                    !empty($e['lastname']) ? $e['lastname'] . ', ' : '',
+                    $e['firstname'] ?? '',
+                    !empty($e['middlename']) ? ' ' . strtoupper(substr($e['middlename'], 0, 1)) . '.' : ''
+                ]))),
             ];
         }, $result['data']);
 
@@ -472,6 +483,69 @@ class EmployeeService
             'total'        => $result['total'],
             'has_more'     => $result['has_more'],
         ];
+    }
+    public function getDirectReports(int $empId): array
+    {
+        $employees = $this->repository->getDirectReports($empId);
+
+        $data = $employees->map(function ($e) {
+            $work = $e->workDetail;
+
+            return [
+                'emp_id'         => $e->employid,
+                'emp_name' => trim(
+                    (!empty($e->lastname) ? $e->lastname . ', ' : '') .
+                        ($e->firstname ?? '') .
+                        (!empty($e->middlename) ? ' ' . strtoupper(substr($e->middlename, 0, 1)) . '.' : '')
+                ),
+                'prodline_id'    => $work->prodline ?? null,
+                'prodline'       => $work->prodLineRel->pl_name ?? null,
+                'department_id'  => $work->department ?? null,
+                'department'     => $work->departmentRel->dept_name ?? null,
+                'station_id'     => $work->station ?? null,
+                'station'        => $work->stationRel->station_name ?? null,
+            ];
+        })->values()->all();
+
+        return [
+            'success' => true,
+            'message' => 'OK',
+            'data'    => $data,
+        ];
+    }
+
+    public function getOperationDirector(): ?array
+    {
+        $director = $this->repository->getOperationDirector();
+
+        if (!$director) {
+            return null;
+        }
+
+        return [
+            'emp_id' => $director->employid,
+            'name'   => trim(implode(' ', array_filter([$director->firstname, $director->middlename, $director->lastname]))),
+        ];
+    }
+    public function getBulkStaffInfo(array $empNos): array
+    {
+        $data = $this->repository->getBulkStaffInfo($empNos)
+            ->mapWithKeys(fn($e) => [
+                $e->employid => [
+                    'emp_name'   => trim(
+                        (!empty($e->lastname)    ? $e->lastname . ', ' : '') .
+                            ($e->firstname           ?? '') .
+                            (!empty($e->middlename)  ? ' ' . strtoupper(substr($e->middlename, 0, 1)) . '.' : '')
+                    ),
+                    'department' => $e->workDetail?->departmentRel?->dept_name,
+                    'prodline'   => $e->workDetail?->prodLineRel?->pl_name,
+                    'station'    => $e->workDetail?->stationRel?->station_name,
+                    'team'       => $e->workDetail?->teamRel?->team_name,
+                    'shift'      => $e->workDetail?->shiftRel?->shift_name,
+                ],
+            ])->all();
+
+        return ['success' => true, 'message' => 'OK', 'data' => $data];
     }
 
     private function notFound(): array

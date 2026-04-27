@@ -10,7 +10,28 @@
       "Bash(grep -r \"@/\" C:/Users/telford.programmer/Desktop/HRIS/vite.config.*)",
       "Bash(xargs ls:*)",
       "Bash(xargs grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pandoc --version)",
+      "Bash(python -c \"import docx; print\\('python-docx available'\\)\")",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Read(//usr/**)",
+      "Read(//usr/local/**)",
+      "Bash(cmd.exe /c \"python --version\")",
+      "Bash(cmd.exe /c \"pip --version\")",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe -Command \"python --version\")",
+      "Bash(powershell.exe -Command \"pip install python-docx\")",
+      "Bash(npm list:*)",
+      "Bash(node docs/generate_word.mjs)",
+      "Bash(xxd \"c:/Users/telford.programmer/Desktop/HRIS/docs/HR_Database_Normalization_Rationale.docx\")",
+      "Bash(python3 -c ':*)",
+      "Bash(node -e ':*)",
+      "Bash(node -e \"require\\('adm-zip'\\)\")",
+      "Bash(powershell -Command ':*)",
+      "Bash(powershell -Command \"Get-Content 'C:/Users/telford.programmer/AppData/Local/Temp/docx_check/[Content_Types].xml'\")",
+      "Bash(node -e \"const p = require\\('./node_modules/docx/package.json'\\); console.log\\('docx version:', p.version\\)\")",
+      "Bash(node generate_word.mjs)"
     ]
   }
 }

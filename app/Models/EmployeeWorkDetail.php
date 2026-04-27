@@ -22,13 +22,17 @@ class EmployeeWorkDetail extends Model
         'team',
         'empstatus',
         'empclass',
+        'empposition',
         'shift_type',
         'shuttle',
         'date_hired',
         'date_reg',
         'service_length',
     ];
-
+    public function getAccstatusAttribute()
+    {
+        return $this->employee ? $this->employee->accstatus : null;
+    }
     public function employee()
     {
         return $this->belongsTo(EmployeeDetail::class, 'employid', 'employid');
